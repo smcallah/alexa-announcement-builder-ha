@@ -33,8 +33,7 @@ def test_service_metadata_describes_all_schema_fields() -> None:
         "target",
         "text",
         "mode",
-        "voice_mode",
-        "voice_name",
+        "voice",
         "rate",
         "pitch",
         "volume",
@@ -50,8 +49,12 @@ def test_service_metadata_describes_all_schema_fields() -> None:
 
 def test_voice_selector_lists_every_supported_voice() -> None:
     metadata = yaml.safe_load((INTEGRATION / "services.yaml").read_text("utf-8"))
-    selector = metadata["send"]["fields"]["voice_name"]["selector"]["select"]
+    selector = metadata["send"]["fields"]["voice"]["selector"]["select"]
 
     assert selector["mode"] == "dropdown"
-    assert tuple(option["value"] for option in selector["options"]) == NAMED_VOICES
-    assert all("(" in option["label"] for option in selector["options"])
+    assert tuple(option["value"] for option in selector["options"]) == (
+        "alexa_plus",
+        "original_alexa",
+        *NAMED_VOICES,
+    )
+    assert all("(" in option["label"] for option in selector["options"][2:])

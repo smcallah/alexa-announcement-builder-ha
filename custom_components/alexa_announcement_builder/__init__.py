@@ -23,6 +23,7 @@ from .const import (
     ATTR_SPEECH_DOMAIN,
     ATTR_TARGET,
     ATTR_TEXT,
+    ATTR_VOICE,
     ATTR_VOICE_MODE,
     ATTR_VOICE_NAME,
     ATTR_VOLUME,
@@ -38,6 +39,7 @@ from .const import (
     RATES,
     SERVICE_SEND,
     SPEECH_DOMAINS,
+    VOICE_CHOICES,
     VOICE_MODES,
     VOLUMES,
 )
@@ -78,9 +80,14 @@ def _validate_message(data: dict[str, Any]) -> dict[str, Any]:
         raise vol.Invalid("one of text or raw_ssml is required")
     if data.get(ATTR_RAW_SSML):
         return data
-    if data[ATTR_VOICE_MODE] == "named_voice" and not data.get(ATTR_VOICE_NAME):
+    if ATTR_VOICE in data:
+        if ATTR_VOICE_MODE in data or ATTR_VOICE_NAME in data:
+            raise vol.Invalid("voice cannot be combined with legacy voice fields")
+        return data
+    voice_mode = data.get(ATTR_VOICE_MODE, DEFAULT_VOICE_MODE)
+    if voice_mode == "named_voice" and not data.get(ATTR_VOICE_NAME):
         raise vol.Invalid("voice_name is required when voice_mode is named_voice")
-    if data[ATTR_VOICE_MODE] != "named_voice" and ATTR_VOICE_NAME in data:
+    if voice_mode != "named_voice" and ATTR_VOICE_NAME in data:
         raise vol.Invalid("voice_name is only valid when voice_mode is named_voice")
     return data
 
@@ -91,9 +98,8 @@ SEND_SCHEMA = vol.All(
             vol.Required(ATTR_TARGET): _notify_entity_id,
             vol.Optional(ATTR_TEXT): cv.string,
             vol.Optional(ATTR_MODE, default=DEFAULT_MODE): vol.In(MODES),
-            vol.Optional(ATTR_VOICE_MODE, default=DEFAULT_VOICE_MODE): vol.In(
-                VOICE_MODES
-            ),
+            vol.Optional(ATTR_VOICE): vol.In(VOICE_CHOICES),
+            vol.Optional(ATTR_VOICE_MODE): vol.In(VOICE_MODES),
             vol.Optional(ATTR_VOICE_NAME): vol.In(NAMED_VOICES),
             vol.Optional(ATTR_RATE): _rate,
             vol.Optional(ATTR_PITCH): _pitch,

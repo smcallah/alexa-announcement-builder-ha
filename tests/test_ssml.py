@@ -16,7 +16,7 @@ def test_original_alexa_voice_prefix() -> None:
         build_ssml(
             {
                 "text": "This is a test.",
-                "voice_mode": "original_alexa",
+                "voice": "original_alexa",
                 "rate": "x-slow",
             }
         )
@@ -27,9 +27,7 @@ def test_original_alexa_voice_prefix() -> None:
 
 def test_named_voice() -> None:
     assert (
-        build_ssml(
-            {"text": "Hello.", "voice_mode": "named_voice", "voice_name": "Matthew"}
-        )
+        build_ssml({"text": "Hello.", "voice": "Matthew"})
         == '<voice name="Matthew">Hello.</voice>'
     )
 
@@ -92,8 +90,7 @@ def test_all_wrappers_follow_documented_order() -> None:
     assert build_ssml(
         {
             "text": "Hello.",
-            "voice_mode": "named_voice",
-            "voice_name": "Joanna",
+            "voice": "Joanna",
             "rate": "slow",
             "whisper": True,
             "emotion": "excited",
@@ -124,10 +121,45 @@ def test_schema_rejects_unsupported_named_voice() -> None:
             {
                 "target": "notify.office_echo_speak",
                 "text": "Hello.",
-                "voice_mode": "named_voice",
-                "voice_name": "NotARealVoice",
+                "voice": "NotARealVoice",
             }
         )
+
+
+def test_schema_rejects_combined_new_and_legacy_voice_fields() -> None:
+    with pytest.raises(vol.Invalid, match="cannot be combined"):
+        SEND_SCHEMA(
+            {
+                "target": "notify.office_echo_speak",
+                "text": "Hello.",
+                "voice": "Joanna",
+                "voice_mode": "named_voice",
+                "voice_name": "Joanna",
+            }
+        )
+
+
+def test_legacy_named_voice_fields_remain_supported() -> None:
+    data = SEND_SCHEMA(
+        {
+            "target": "notify.office_echo_speak",
+            "text": "Hello.",
+            "voice_mode": "named_voice",
+            "voice_name": "Joanna",
+        }
+    )
+    assert build_ssml(data) == '<voice name="Joanna">Hello.</voice>'
+
+
+def test_legacy_original_alexa_voice_mode_remains_supported() -> None:
+    data = SEND_SCHEMA(
+        {
+            "target": "notify.office_echo_speak",
+            "text": "Hello.",
+            "voice_mode": "original_alexa",
+        }
+    )
+    assert build_ssml(data) == '<voice name="Kendra"> </voice>Hello.'
 
 
 def test_schema_accepts_raw_ssml_without_text() -> None:

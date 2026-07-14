@@ -6,6 +6,7 @@ SERVICE_SEND = "send"
 ATTR_TARGET = "target"
 ATTR_TEXT = "text"
 ATTR_MODE = "mode"
+ATTR_VOICE = "voice"
 ATTR_VOICE_MODE = "voice_mode"
 ATTR_VOICE_NAME = "voice_name"
 ATTR_RATE = "rate"
@@ -20,6 +21,7 @@ ATTR_BREAK_AFTER_MS = "break_after_ms"
 ATTR_RAW_SSML = "raw_ssml"
 
 DEFAULT_MODE = "speak"
+DEFAULT_VOICE = "alexa_plus"
 DEFAULT_VOICE_MODE = "alexa_plus"
 DEFAULT_EMOTION_INTENSITY = "medium"
 
@@ -65,6 +67,7 @@ NAMED_VOICES = (
     "Lucia",
     "Mia",
 )
+VOICE_CHOICES = ("alexa_plus", "original_alexa", *NAMED_VOICES)
 RATES = ("x-slow", "slow", "medium", "fast", "x-fast")
 PITCHES = ("x-low", "low", "medium", "high", "x-high")
 VOLUMES = ("silent", "x-soft", "soft", "medium", "loud", "x-loud")

@@ -26,24 +26,18 @@ send:
           options:
             - speak
             - announce
-    voice_mode:
-      name: Voice mode
-      description: Select Alexa+, original Alexa workaround, or a named voice.
+    voice:
+      name: Voice
+      description: Select the Alexa default behavior or a named Amazon Polly voice.
       default: alexa_plus
-      selector:
-        select:
-          options:
-            - alexa_plus
-            - original_alexa
-            - named_voice
-    voice_name:
-      name: Voice name
-      description: Amazon Polly voice; required for named voice mode. Availability and pronunciation vary by locale.
-      example: Kendra
       selector:
         select:
           mode: dropdown
           options:
+            - label: Alexa+ default voice
+              value: alexa_plus
+            - label: Original Alexa default voice
+              value: original_alexa
             - label: Ivy — English, American (en-US)
               value: Ivy
             - label: Joanna — English, American (en-US)
