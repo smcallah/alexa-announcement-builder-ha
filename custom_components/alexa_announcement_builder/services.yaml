@@ -1,0 +1,126 @@
+send:
+  name: Send Alexa announcement
+  description: Build Alexa SSML and send it through a notify entity.
+  fields:
+    target:
+      name: Target
+      description: Alexa Devices notify entity that will receive the SSML.
+      required: true
+      example: notify.office_echo_speak
+      selector:
+        entity:
+          domain: notify
+    text:
+      name: Text
+      description: Plain text to escape and convert to SSML. Required unless raw SSML is supplied.
+      example: The garage door is still open.
+      selector:
+        text:
+          multiline: true
+    mode:
+      name: Mode
+      description: Descriptive mode; the target notify entity determines actual behavior.
+      default: speak
+      selector:
+        select:
+          options:
+            - speak
+            - announce
+    voice_mode:
+      name: Voice mode
+      description: Select Alexa+, original Alexa workaround, or a named voice.
+      default: alexa_plus
+      selector:
+        select:
+          options:
+            - alexa_plus
+            - original_alexa
+            - named_voice
+    voice_name:
+      name: Voice name
+      description: Amazon Polly voice name; required for named voice mode.
+      example: Kendra
+      selector:
+        text:
+    rate:
+      name: Rate
+      description: Named rate or a positive percentage.
+      example: x-slow
+      selector:
+        text:
+    pitch:
+      name: Pitch
+      description: Named pitch or a signed percentage.
+      example: +20%
+      selector:
+        text:
+    volume:
+      name: Volume
+      description: Alexa prosody volume.
+      selector:
+        select:
+          options:
+            - silent
+            - x-soft
+            - soft
+            - medium
+            - loud
+            - x-loud
+    whisper:
+      name: Whisper
+      description: Apply the Alexa whispered speech effect.
+      default: false
+      selector:
+        boolean:
+    emotion:
+      name: Emotion
+      description: Alexa emotion to apply.
+      selector:
+        select:
+          options:
+            - excited
+            - disappointed
+    emotion_intensity:
+      name: Emotion intensity
+      description: Intensity used when an emotion is selected.
+      default: medium
+      selector:
+        select:
+          options:
+            - low
+            - medium
+            - high
+    domain:
+      name: Speech domain
+      description: Alexa speech style domain.
+      selector:
+        select:
+          options:
+            - music
+            - news
+            - conversational
+            - long-form
+    break_before_ms:
+      name: Break before
+      description: Silent break before speech, in milliseconds.
+      selector:
+        number:
+          min: 0
+          max: 10000
+          unit_of_measurement: ms
+          mode: box
+    break_after_ms:
+      name: Break after
+      description: Silent break after speech, in milliseconds.
+      selector:
+        number:
+          min: 0
+          max: 10000
+          unit_of_measurement: ms
+          mode: box
+    raw_ssml:
+      name: Raw SSML
+      description: Trusted SSML contents to send unchanged instead of generated speech.
+      selector:
+        text:
+          multiline: true

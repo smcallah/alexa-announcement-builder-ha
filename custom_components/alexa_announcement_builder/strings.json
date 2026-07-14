@@ -1,0 +1,25 @@
+{
+  "services": {
+    "send": {
+      "name": "Send Alexa announcement",
+      "description": "Build Alexa SSML and send it through a notify entity.",
+      "fields": {
+        "target": { "name": "Target", "description": "Alexa Devices notify entity that will receive the SSML." },
+        "text": { "name": "Text", "description": "Plain text to escape and convert to SSML." },
+        "mode": { "name": "Mode", "description": "Descriptive mode; the target notify entity determines actual behavior." },
+        "voice_mode": { "name": "Voice mode", "description": "Select Alexa+, original Alexa workaround, or a named voice." },
+        "voice_name": { "name": "Voice name", "description": "Amazon Polly voice name; required for named voice mode." },
+        "rate": { "name": "Rate", "description": "Named rate or a positive percentage." },
+        "pitch": { "name": "Pitch", "description": "Named pitch or a signed percentage." },
+        "volume": { "name": "Volume", "description": "Alexa prosody volume." },
+        "whisper": { "name": "Whisper", "description": "Apply the Alexa whispered speech effect." },
+        "emotion": { "name": "Emotion", "description": "Alexa emotion to apply." },
+        "emotion_intensity": { "name": "Emotion intensity", "description": "Intensity used when an emotion is selected." },
+        "domain": { "name": "Speech domain", "description": "Alexa speech style domain." },
+        "break_before_ms": { "name": "Break before", "description": "Silent break before speech, in milliseconds." },
+        "break_after_ms": { "name": "Break after", "description": "Silent break after speech, in milliseconds." },
+        "raw_ssml": { "name": "Raw SSML", "description": "Trusted SSML contents to send unchanged instead of generated speech." }
+      }
+    }
+  }
+}
