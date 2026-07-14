@@ -83,7 +83,7 @@ def test_xml_escaping() -> None:
 
 def test_raw_ssml_passthrough() -> None:
     raw = '<amazon:effect name="whispered">A & B</amazon:effect>'
-    assert build_ssml({"raw_ssml": raw, "voice_mode": "original_alexa"}) == raw
+    assert build_ssml({"raw_ssml": raw, "voice": "original_alexa"}) == raw
 
 
 def test_all_wrappers_follow_documented_order() -> None:
@@ -104,17 +104,6 @@ def test_all_wrappers_follow_documented_order() -> None:
     )
 
 
-def test_invalid_named_voice_configuration() -> None:
-    with pytest.raises(vol.Invalid, match="voice_name is required"):
-        SEND_SCHEMA(
-            {
-                "target": "notify.office_echo_speak",
-                "text": "Hello.",
-                "voice_mode": "named_voice",
-            }
-        )
-
-
 def test_schema_rejects_unsupported_named_voice() -> None:
     with pytest.raises(vol.Invalid):
         SEND_SCHEMA(
@@ -126,42 +115,6 @@ def test_schema_rejects_unsupported_named_voice() -> None:
         )
 
 
-def test_schema_rejects_combined_new_and_legacy_voice_fields() -> None:
-    with pytest.raises(vol.Invalid, match="cannot be combined"):
-        SEND_SCHEMA(
-            {
-                "target": "notify.office_echo_speak",
-                "text": "Hello.",
-                "voice": "Joanna",
-                "voice_mode": "named_voice",
-                "voice_name": "Joanna",
-            }
-        )
-
-
-def test_legacy_named_voice_fields_remain_supported() -> None:
-    data = SEND_SCHEMA(
-        {
-            "target": "notify.office_echo_speak",
-            "text": "Hello.",
-            "voice_mode": "named_voice",
-            "voice_name": "Joanna",
-        }
-    )
-    assert build_ssml(data) == '<voice name="Joanna">Hello.</voice>'
-
-
-def test_legacy_original_alexa_voice_mode_remains_supported() -> None:
-    data = SEND_SCHEMA(
-        {
-            "target": "notify.office_echo_speak",
-            "text": "Hello.",
-            "voice_mode": "original_alexa",
-        }
-    )
-    assert build_ssml(data) == '<voice name="Kendra"> </voice>Hello.'
-
-
 def test_schema_accepts_raw_ssml_without_text() -> None:
     data = SEND_SCHEMA(
         {"target": "notify.office_echo_speak", "raw_ssml": '<break time="1s"/>'}
@@ -169,12 +122,12 @@ def test_schema_accepts_raw_ssml_without_text() -> None:
     assert data["raw_ssml"] == '<break time="1s"/>'
 
 
-def test_raw_ssml_bypasses_named_voice_requirement() -> None:
+def test_raw_ssml_bypasses_voice_wrapping() -> None:
     data = SEND_SCHEMA(
         {
             "target": "notify.office_echo_speak",
             "raw_ssml": '<break time="1s"/>',
-            "voice_mode": "named_voice",
+            "voice": "Joanna",
         }
     )
     assert build_ssml(data) == '<break time="1s"/>'

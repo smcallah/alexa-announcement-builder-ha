@@ -7,8 +7,6 @@ ATTR_TARGET = "target"
 ATTR_TEXT = "text"
 ATTR_MODE = "mode"
 ATTR_VOICE = "voice"
-ATTR_VOICE_MODE = "voice_mode"
-ATTR_VOICE_NAME = "voice_name"
 ATTR_RATE = "rate"
 ATTR_PITCH = "pitch"
 ATTR_VOLUME = "volume"
@@ -22,11 +20,9 @@ ATTR_RAW_SSML = "raw_ssml"
 
 DEFAULT_MODE = "speak"
 DEFAULT_VOICE = "alexa_plus"
-DEFAULT_VOICE_MODE = "alexa_plus"
 DEFAULT_EMOTION_INTENSITY = "medium"
 
 MODES = ("speak", "announce")
-VOICE_MODES = ("alexa_plus", "original_alexa", "named_voice")
 NAMED_VOICES = (
     "Ivy",
     "Joanna",

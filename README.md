@@ -68,9 +68,6 @@ named Polly voice:
   Polly voice tag. Each option shows its locale; voices from a different locale
   may pronounce the supplied text differently.
 
-The earlier `voice_mode` and `voice_name` service fields remain accepted for
-backward compatibility, but new automations should use `voice`.
-
 Example with a named voice:
 
 ```yaml
