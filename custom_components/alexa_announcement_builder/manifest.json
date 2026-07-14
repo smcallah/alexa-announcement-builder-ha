@@ -2,6 +2,7 @@
   "domain": "alexa_announcement_builder",
   "name": "Alexa Announcement Builder",
   "codeowners": [],
+  "config_flow": true,
   "dependencies": ["notify"],
   "documentation": "https://github.com/smcallah/alexa-announcement-builder-ha",
   "integration_type": "service",

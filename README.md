@@ -28,14 +28,14 @@ then restart Home Assistant.
 
 ### Enable the integration
 
-Add this entry to `configuration.yaml`:
+1. Go to **Settings → Devices & services**.
+2. Select **Add Integration**.
+3. Search for **Alexa Announcement Builder**.
+4. Select **Submit** to create the integration entry.
 
-```yaml
-alexa_announcement_builder:
-```
-
-Restart Home Assistant. The `alexa_announcement_builder.send` action will then
-be available in Developer Tools and automations.
+No `configuration.yaml` entry is required. The
+`alexa_announcement_builder.send` action will then be available in Developer
+Tools and automations.
 
 ## Basic usage
 

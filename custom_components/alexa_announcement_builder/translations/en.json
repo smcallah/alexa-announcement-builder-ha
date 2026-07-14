@@ -1,4 +1,15 @@
 {
+  "config": {
+    "step": {
+      "user": {
+        "title": "Set up Alexa Announcement Builder",
+        "description": "Create the integration entry to enable the Alexa Announcement Builder action. No account credentials or device selection are required."
+      }
+    },
+    "abort": {
+      "single_instance_allowed": "Alexa Announcement Builder is already configured."
+    }
+  },
   "services": {
     "send": {
       "name": "Send Alexa announcement",

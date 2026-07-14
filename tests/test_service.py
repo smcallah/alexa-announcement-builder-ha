@@ -3,7 +3,21 @@
 from types import SimpleNamespace
 from unittest.mock import AsyncMock, Mock
 
-from custom_components.alexa_announcement_builder import SEND_SCHEMA, async_setup
+from custom_components.alexa_announcement_builder import (
+    SEND_SCHEMA,
+    async_setup,
+    async_setup_entry,
+    async_unload_entry,
+)
+
+
+async def test_config_entry_setup_and_unload() -> None:
+    """A config entry needs no additional runtime resources."""
+    hass = SimpleNamespace()
+    entry = SimpleNamespace()
+
+    assert await async_setup_entry(hass, entry) is True
+    assert await async_unload_entry(hass, entry) is True
 
 
 async def test_service_forwards_to_notify_send_message() -> None:

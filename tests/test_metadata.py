@@ -18,6 +18,12 @@ def test_json_metadata_is_valid() -> None:
     )
 
 
+def test_manifest_enables_config_flow() -> None:
+    manifest = json.loads((INTEGRATION / "manifest.json").read_text(encoding="utf-8"))
+
+    assert manifest["config_flow"] is True
+
+
 def test_service_metadata_describes_all_schema_fields() -> None:
     metadata = yaml.safe_load((INTEGRATION / "services.yaml").read_text("utf-8"))
     fields = metadata["send"]["fields"]
