@@ -7,6 +7,7 @@ import re
 from typing import Any
 
 import voluptuous as vol
+from homeassistant.config_entries import ConfigEntry
 from homeassistant.core import HomeAssistant, ServiceCall
 from homeassistant.helpers import config_validation as cv
 
@@ -136,4 +137,14 @@ async def async_setup(hass: HomeAssistant, config: dict[str, Any]) -> bool:
         schema=SEND_SCHEMA,
     )
     _LOGGER.info("Alexa Announcement Builder service registered")
+    return True
+
+
+async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
+    """Set up Alexa Announcement Builder from a config entry."""
+    return True
+
+
+async def async_unload_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
+    """Unload an Alexa Announcement Builder config entry."""
     return True
