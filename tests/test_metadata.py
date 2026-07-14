@@ -5,6 +5,8 @@ from pathlib import Path
 
 import yaml
 
+from custom_components.alexa_announcement_builder.const import NAMED_VOICES
+
 ROOT = Path(__file__).parents[1]
 INTEGRATION = ROOT / "custom_components" / "alexa_announcement_builder"
 
@@ -44,3 +46,12 @@ def test_service_metadata_describes_all_schema_fields() -> None:
         "break_after_ms",
         "raw_ssml",
     }
+
+
+def test_voice_selector_lists_every_supported_voice() -> None:
+    metadata = yaml.safe_load((INTEGRATION / "services.yaml").read_text("utf-8"))
+    selector = metadata["send"]["fields"]["voice_name"]["selector"]["select"]
+
+    assert selector["mode"] == "dropdown"
+    assert tuple(option["value"] for option in selector["options"]) == NAMED_VOICES
+    assert all("(" in option["label"] for option in selector["options"])

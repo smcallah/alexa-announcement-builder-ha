@@ -33,6 +33,7 @@ from .const import (
     EMOTION_INTENSITIES,
     EMOTIONS,
     MODES,
+    NAMED_VOICES,
     PITCHES,
     RATES,
     SERVICE_SEND,
@@ -93,7 +94,7 @@ SEND_SCHEMA = vol.All(
             vol.Optional(ATTR_VOICE_MODE, default=DEFAULT_VOICE_MODE): vol.In(
                 VOICE_MODES
             ),
-            vol.Optional(ATTR_VOICE_NAME): cv.string,
+            vol.Optional(ATTR_VOICE_NAME): vol.In(NAMED_VOICES),
             vol.Optional(ATTR_RATE): _rate,
             vol.Optional(ATTR_PITCH): _pitch,
             vol.Optional(ATTR_VOLUME): vol.In(VOLUMES),

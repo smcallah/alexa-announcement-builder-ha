@@ -25,6 +25,46 @@ DEFAULT_EMOTION_INTENSITY = "medium"
 
 MODES = ("speak", "announce")
 VOICE_MODES = ("alexa_plus", "original_alexa", "named_voice")
+NAMED_VOICES = (
+    "Ivy",
+    "Joanna",
+    "Joey",
+    "Justin",
+    "Kendra",
+    "Kimberly",
+    "Matthew",
+    "Salli",
+    "Nicole",
+    "Russell",
+    "Amy",
+    "Brian",
+    "Emma",
+    "Aditi",
+    "Raveena",
+    "Geraint",
+    "Chantal",
+    "Celine",
+    "Lea",
+    "Mathieu",
+    "Hans",
+    "Marlene",
+    "Vicki",
+    "Carla",
+    "Giorgio",
+    "Bianca",
+    "Mizuki",
+    "Takumi",
+    "Vitoria",
+    "Camila",
+    "Ricardo",
+    "Penelope",
+    "Lupe",
+    "Miguel",
+    "Conchita",
+    "Enrique",
+    "Lucia",
+    "Mia",
+)
 RATES = ("x-slow", "slow", "medium", "fast", "x-fast")
 PITCHES = ("x-low", "low", "medium", "high", "x-high")
 VOLUMES = ("silent", "x-soft", "soft", "medium", "loud", "x-loud")
