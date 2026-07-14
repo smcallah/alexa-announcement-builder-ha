@@ -61,7 +61,9 @@ whether Alexa speaks or announces the message.
   The single space is intentional and works around Alexa+ taking over speech on
   devices where the behavior has been observed.
 - `named_voice` wraps the speech in an Amazon Polly voice tag. Set `voice_name`
-  to a supported voice such as `Kendra`, `Matthew`, or `Joanna`.
+  from the dropdown of Alexa-supported Polly voices. Each option shows its
+  locale; voices from a different locale may pronounce the supplied text
+  differently.
 
 Example with a named voice:
 

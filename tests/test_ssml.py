@@ -118,6 +118,18 @@ def test_invalid_named_voice_configuration() -> None:
         )
 
 
+def test_schema_rejects_unsupported_named_voice() -> None:
+    with pytest.raises(vol.Invalid):
+        SEND_SCHEMA(
+            {
+                "target": "notify.office_echo_speak",
+                "text": "Hello.",
+                "voice_mode": "named_voice",
+                "voice_name": "NotARealVoice",
+            }
+        )
+
+
 def test_schema_accepts_raw_ssml_without_text() -> None:
     data = SEND_SCHEMA(
         {"target": "notify.office_echo_speak", "raw_ssml": '<break time="1s"/>'}

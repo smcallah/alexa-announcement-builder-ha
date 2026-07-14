@@ -19,7 +19,7 @@
         "text": { "name": "Text", "description": "Plain text to escape and convert to SSML." },
         "mode": { "name": "Mode", "description": "Descriptive mode; the target notify entity determines actual behavior." },
         "voice_mode": { "name": "Voice mode", "description": "Select Alexa+, original Alexa workaround, or a named voice." },
-        "voice_name": { "name": "Voice name", "description": "Amazon Polly voice name; required for named voice mode." },
+        "voice_name": { "name": "Voice name", "description": "Amazon Polly voice; required for named voice mode. Availability and pronunciation vary by locale." },
         "rate": { "name": "Rate", "description": "Named rate or a positive percentage." },
         "pitch": { "name": "Pitch", "description": "Named pitch or a signed percentage." },
         "volume": { "name": "Volume", "description": "Alexa prosody volume." },
