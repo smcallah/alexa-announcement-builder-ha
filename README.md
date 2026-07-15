@@ -45,17 +45,15 @@ action: alexa_announcement_builder.send
 data:
   target: notify.office_echo_speak
   sequence:
-    - content:
-        active_choice: Message
-        Message:
-          text: "The garage door is still open."
-          voice: original_alexa
-          rate:
-            active_choice: Named rate
-            Named rate: x-slow
-          volume:
-            active_choice: Named volume
-            Named volume: loud
+    - content_type: Message
+      text: "The garage door is still open."
+      voice: original_alexa
+      rate:
+        active_choice: Named rate
+        Named rate: x-slow
+      volume:
+        active_choice: Named volume
+        Named volume: loud
 ```
 
 The selected notify entity decides whether Alexa speaks or announces the
@@ -66,10 +64,12 @@ audio markup.
 
 ## Sequence builder
 
-The **Sequence** field starts with an **Add** button. Each added item opens a
-chooser for **Message**, **Sound**, or **Raw SSML** and displays only the options
-for that content type. Saved items collapse into compact rows with Edit and
-Delete controls. Drag the handle on a row to change the playback order.
+The **Sequence** field starts with an **Add** button. Each added item opens one
+form with a required **Content type** field for **Message**, **Sound**, or
+**Raw SSML**. Fill in the matching content field and any message options. The
+selected Content type determines what is sent; values left in fields belonging
+to another type are ignored. Saved items collapse into readable rows with Edit
+and Delete controls. Drag the handle on a row to change the playback order.
 
 Add as many items as needed. Message items keep their own voice, prosody,
 whisper, emotion, and speech-domain settings. The integration normalizes every
@@ -83,19 +83,14 @@ action: alexa_announcement_builder.send
 data:
   target: notify.office_echo_speak
   sequence:
-    - content:
-        active_choice: Message
-        Message:
-          text: "Someone is at the door."
-          voice: Joanna
-    - content:
-        active_choice: Sound
-        Sound: door_knock
-    - content:
-        active_choice: Message
-        Message:
-          text: "Please check the camera."
-          voice: original_alexa
+    - content_type: Message
+      text: "Someone is at the door."
+      voice: Joanna
+    - content_type: Sound
+      sound: Door knock
+    - content_type: Message
+      text: "Please check the camera."
+      voice: original_alexa
 ```
 
 Rate, pitch, and volume each offer a named-value dropdown and a bounded custom
@@ -105,19 +100,17 @@ as:
 
 ```yaml
 sequence:
-  - content:
-      active_choice: Message
-      Message:
-        text: "Example message."
-        rate:
-          active_choice: Enter %-age
-          Enter %-age: 80
-        pitch:
-          active_choice: Enter %-age
-          Enter %-age: 20
-        volume:
-          active_choice: Enter dB adjustment
-          Enter dB adjustment: -3
+  - content_type: Message
+    text: "Example message."
+    rate:
+      active_choice: Enter %-age
+      Enter %-age: 80
+    pitch:
+      active_choice: Enter %-age
+      Enter %-age: 20
+    volume:
+      active_choice: Enter dB adjustment
+      Enter dB adjustment: -3
 ```
 
 Custom rate values are limited to 20 through 200, pitch values to -33.3 through
@@ -133,9 +126,8 @@ action: alexa_announcement_builder.send
 data:
   target: notify.office_echo_speak
   sequence:
-    - content:
-        active_choice: Sound
-        Sound: doorbell_chime
+    - content_type: Sound
+      sound: Doorbell chime
 ```
 
 The Sound dropdown also accepts a custom value in any of these forms:
@@ -152,9 +144,8 @@ action: alexa_announcement_builder.send
 data:
   target: notify.office_echo_speak
   sequence:
-    - content:
-        active_choice: Sound
-        Sound: '<audio src="soundbank://soundlibrary/air/fire_extinguisher/fire_extinguisher_04"/>'
+    - content_type: Sound
+      sound: '<audio src="soundbank://soundlibrary/air/fire_extinguisher/fire_extinguisher_04"/>'
 ```
 
 Copied tags are parsed and rebuilt rather than passed through as trusted
@@ -164,8 +155,8 @@ duration requirements. The integration validates the URL format but does not
 download or inspect the remote file.
 
 Each Sound item stores one preset name or custom URI, so changing between them
-replaces the previous value instead of combining both. The per-item content
-chooser prevents attaching message-only voice or speech effects to Sound.
+replaces the previous value instead of combining both. The Content type is the
+authority for each row, so message-only values left in a Sound row are ignored.
 Sounds can be placed anywhere in the ordered sequence. Selecting an Announce
 target for a sequence containing Sound is rejected with a clear validation
 error; select the matching Speak target instead.
@@ -192,16 +183,14 @@ action: alexa_announcement_builder.send
 data:
   target: notify.kitchen_echo_speak
   sequence:
-    - content:
-        active_choice: Message
-        Message:
-          text: "Dinner is ready."
-          voice: Joanna
-          rate:
-            active_choice: Named rate
-            Named rate: slow
-          emotion: excited
-          emotion_intensity: medium
+    - content_type: Message
+      text: "Dinner is ready."
+      voice: Joanna
+      rate:
+        active_choice: Named rate
+        Named rate: slow
+      emotion: excited
+      emotion_intensity: medium
 ```
 
 Example announcement automation:
@@ -218,14 +207,12 @@ actions:
     data:
       target: notify.office_echo_announce
       sequence:
-        - content:
-            active_choice: Message
-            Message:
-              text: "The garage door has been open for ten minutes."
-              voice: original_alexa
-              volume:
-                active_choice: Named volume
-                Named volume: loud
+        - content_type: Message
+          text: "The garage door has been open for ten minutes."
+          voice: original_alexa
+          volume:
+            active_choice: Named volume
+            Named volume: loud
       break_before_ms: 250
 mode: single
 ```
@@ -237,16 +224,15 @@ action: alexa_announcement_builder.send
 data:
   target: notify.office_echo_speak
   sequence:
-    - content:
-        active_choice: Raw SSML
-        Raw SSML: '<prosody rate="slow">This markup is sent unchanged.</prosody>'
+    - content_type: Raw SSML
+      raw_ssml: '<prosody rate="slow">This markup is sent unchanged.</prosody>'
 ```
 
 Message text is XML-escaped automatically. Raw SSML items are deliberately not
 escaped or validated and must not contain outer `<speak>` tags. Existing YAML
-using the former single `content` chooser or separate `text`, `sound`, and
-`raw_ssml` fields remains accepted, but single-content fields cannot be combined
-with `sequence`.
+using the former nested `content` chooser, the former single `content` chooser,
+or separate `text`, `sound`, and `raw_ssml` fields remains accepted, but
+single-content fields cannot be combined with `sequence`.
 
 ## Alexa SSML caveats
 

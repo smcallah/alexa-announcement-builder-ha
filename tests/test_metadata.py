@@ -6,6 +6,7 @@ from pathlib import Path
 import yaml
 
 from custom_components.alexa_announcement_builder.const import (
+    COMMON_SOUND_NAMES,
     COMMON_SOUNDS,
     NAMED_VOICES,
 )
@@ -14,10 +15,9 @@ ROOT = Path(__file__).parents[1]
 INTEGRATION = ROOT / "custom_components" / "alexa_announcement_builder"
 
 
-def _sequence_content_choices(metadata: dict) -> tuple[dict, dict]:
+def _sequence_fields(metadata: dict) -> tuple[dict, dict]:
     sequence = metadata["send"]["fields"]["sequence"]
-    content = sequence["selector"]["object"]["fields"]["content"]
-    return sequence, content["selector"]["choose"]["choices"]
+    return sequence, sequence["selector"]["object"]["fields"]
 
 
 def test_json_metadata_is_valid() -> None:
@@ -57,9 +57,8 @@ def test_service_translations_cover_every_field() -> None:
 
 def test_voice_selector_lists_every_supported_voice() -> None:
     metadata = yaml.safe_load((INTEGRATION / "services.yaml").read_text("utf-8"))
-    _, choices = _sequence_content_choices(metadata)
-    message_fields = choices["Message"]["selector"]["object"]["fields"]
-    selector = message_fields["voice"]["selector"]["select"]
+    _, fields = _sequence_fields(metadata)
+    selector = fields["voice"]["selector"]["select"]
 
     assert selector["mode"] == "dropdown"
     assert tuple(option["value"] for option in selector["options"]) == (
@@ -81,19 +80,22 @@ def test_target_selector_only_lists_alexa_device_notify_entities() -> None:
 
 def test_sound_selector_offers_labeled_presets_and_custom_values() -> None:
     metadata = yaml.safe_load((INTEGRATION / "services.yaml").read_text("utf-8"))
-    _, content_choices = _sequence_content_choices(metadata)
-    sound = content_choices["Sound"]["selector"]["select"]
+    _, fields = _sequence_fields(metadata)
+    sound = fields["sound"]["selector"]["select"]
 
     assert sound["mode"] == "dropdown"
     assert sound["custom_value"] is True
-    assert tuple(option["value"] for option in sound["options"]) == tuple(COMMON_SOUNDS)
+    assert tuple(option["value"] for option in sound["options"]) == tuple(
+        COMMON_SOUND_NAMES.values()
+    )
+    assert tuple(COMMON_SOUND_NAMES) == tuple(COMMON_SOUNDS)
     assert all(option["label"] for option in sound["options"])
+    assert all(option["label"] == option["value"] for option in sound["options"])
 
 
 def test_prosody_selectors_offer_named_and_bounded_custom_values() -> None:
     metadata = yaml.safe_load((INTEGRATION / "services.yaml").read_text("utf-8"))
-    _, content_choices = _sequence_content_choices(metadata)
-    fields = content_choices["Message"]["selector"]["object"]["fields"]
+    _, fields = _sequence_fields(metadata)
 
     expected = {
         "rate": ("Named rate", "Enter %-age", 20, 200, "%"),
@@ -120,25 +122,20 @@ def test_prosody_selectors_offer_named_and_bounded_custom_values() -> None:
         }
 
 
-def test_sequence_selector_is_repeatable_and_content_options_are_exclusive() -> None:
+def test_sequence_selector_is_repeatable_and_not_nested() -> None:
     metadata = yaml.safe_load((INTEGRATION / "services.yaml").read_text("utf-8"))
-    sequence, choices = _sequence_content_choices(metadata)
+    sequence, fields = _sequence_fields(metadata)
     object_selector = sequence["selector"]["object"]
-    content = object_selector["fields"]["content"]
 
     assert sequence["required"] is True
     assert object_selector["multiple"] is True
-    assert tuple(object_selector["fields"]) == ("content",)
-    assert content["required"] is True
-    assert tuple(choices) == ("Message", "Sound", "Raw SSML")
-    assert tuple(next(iter(choice["selector"])) for choice in choices.values()) == (
-        "object",
-        "select",
+    assert object_selector["label_field"] == "content_type"
+    assert object_selector["description_field"] == "sound"
+    assert tuple(fields) == (
+        "content_type",
         "text",
-    )
-    message_fields = choices["Message"]["selector"]["object"]["fields"]
-    assert tuple(message_fields) == (
-        "text",
+        "sound",
+        "raw_ssml",
         "voice",
         "rate",
         "pitch",
@@ -148,5 +145,10 @@ def test_sequence_selector_is_repeatable_and_content_options_are_exclusive() -> 
         "emotion_intensity",
         "domain",
     )
-    assert message_fields["text"]["required"] is True
-    assert choices["Raw SSML"]["selector"] == {"text": {"multiline": True}}
+    assert fields["content_type"]["required"] is True
+    assert fields["content_type"]["selector"] == {
+        "select": {"options": ["Message", "Sound", "Raw SSML"]}
+    }
+    assert fields["text"]["selector"] == {"text": {"multiline": True}}
+    assert fields["raw_ssml"]["selector"] == {"text": {"multiline": True}}
+    assert all("object" not in field["selector"] for field in fields.values())
