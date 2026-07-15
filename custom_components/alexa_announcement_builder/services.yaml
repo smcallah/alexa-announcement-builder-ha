@@ -24,7 +24,6 @@ send:
           fields:
             content_type:
               label: Content type
-              description: Select which content field and options this item will use. Values in fields for other content types are ignored.
               required: true
               selector:
                 select:
@@ -34,13 +33,11 @@ send:
                     - Raw SSML
             text:
               label: Message text
-              description: Used only when Content type is Message.
               selector:
                 text:
                   multiline: true
             sound:
               label: Sound
-              description: Used only when Content type is Sound. Select a preset or enter a custom HTTPS URL, soundbank URI, or audio tag.
               selector:
                 select:
                   mode: dropdown
@@ -72,13 +69,11 @@ send:
                       value: Fire extinguisher
             raw_ssml:
               label: Raw SSML
-              description: Used only when Content type is Raw SSML.
               selector:
                 text:
                   multiline: true
             voice:
               label: Voice
-              description: Used only when Content type is Message.
               selector:
                 select:
                   mode: dropdown
@@ -165,7 +160,6 @@ send:
                       value: Mia
             rate:
               label: Rate
-              description: Used only when Content type is Message.
               selector:
                 choose:
                   choices:
@@ -189,7 +183,6 @@ send:
                           mode: box
             pitch:
               label: Pitch
-              description: Used only when Content type is Message.
               selector:
                 choose:
                   choices:
@@ -213,7 +206,6 @@ send:
                           mode: box
             volume:
               label: Volume
-              description: Used only when Content type is Message.
               selector:
                 choose:
                   choices:
@@ -238,12 +230,10 @@ send:
                           mode: box
             whisper:
               label: Whisper
-              description: Used only when Content type is Message.
               selector:
                 boolean:
             emotion:
               label: Emotion
-              description: Used only when Content type is Message.
               selector:
                 select:
                   options:
@@ -251,7 +241,6 @@ send:
                     - disappointed
             emotion_intensity:
               label: Emotion intensity
-              description: Used only when Content type is Message.
               selector:
                 select:
                   options:
@@ -260,7 +249,6 @@ send:
                     - high
             domain:
               label: Speech domain
-              description: Used only when Content type is Message.
               selector:
                 select:
                   options:
