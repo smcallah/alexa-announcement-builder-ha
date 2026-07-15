@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import logging
+import re
 from collections.abc import Mapping
 from decimal import Decimal, InvalidOperation
 from typing import Any
@@ -15,6 +16,7 @@ from homeassistant.helpers import config_validation as cv
 from .const import (
     ATTR_BREAK_AFTER_MS,
     ATTR_BREAK_BEFORE_MS,
+    ATTR_CONTENT,
     ATTR_EMOTION,
     ATTR_EMOTION_INTENSITY,
     ATTR_PITCH,
@@ -42,6 +44,7 @@ from .sound import normalize_sound_source
 from .ssml import build_ssml
 
 _LOGGER = logging.getLogger(__name__)
+_ANNOUNCE_ENTITY_ID = re.compile(r"_announce(?:_\d+)?$")
 
 ACTIVE_CHOICE = "active_choice"
 NAMED_RATE_CHOICE = "Named rate"
@@ -51,6 +54,10 @@ PERCENTAGE_CHOICE = "Enter %-age"
 DB_ADJUSTMENT_CHOICE = "Enter dB adjustment"
 COMMON_SOUND_CHOICE = "Common sound"
 CUSTOM_SOUND_CHOICE = "Custom sound"
+MESSAGE_CHOICE = "Message"
+SOUND_CHOICE = "Sound"
+RAW_SSML_CHOICE = "Raw SSML"
+SOUND_SOURCE_FIELD = "source"
 
 
 def _notify_entity_id(value: Any) -> str:
@@ -171,13 +178,113 @@ def _sound(value: Any) -> str:
     return normalize_sound_source(value.get(CUSTOM_SOUND_CHOICE))
 
 
-def _validate_content(data: dict[str, Any]) -> dict[str, Any]:
-    """Validate conditional message and sound fields."""
-    sound = data.get(ATTR_SOUND)
-    if sound and (data.get(ATTR_TEXT) or data.get(ATTR_RAW_SSML)):
-        raise vol.Invalid("sound cannot be combined with text or raw_ssml")
-    if not data.get(ATTR_TEXT) and not data.get(ATTR_RAW_SSML) and not sound:
-        raise vol.Invalid("one of text, raw_ssml, or sound is required")
+def _required_text(value: Any, field_name: str) -> str:
+    """Validate a required, non-empty text value."""
+    text = cv.string(value)
+    if not text.strip():
+        raise vol.Invalid(f"{field_name} cannot be empty")
+    return text
+
+
+def _message_text(value: Any) -> str:
+    """Validate required message text."""
+    return _required_text(value, ATTR_TEXT)
+
+
+MESSAGE_SCHEMA = vol.Schema(
+    {
+        vol.Required(ATTR_TEXT): _message_text,
+        vol.Optional(ATTR_VOICE): vol.In(VOICE_CHOICES),
+        vol.Optional(ATTR_RATE): _rate,
+        vol.Optional(ATTR_PITCH): _pitch,
+        vol.Optional(ATTR_VOLUME): _volume,
+        vol.Optional(ATTR_WHISPER): cv.boolean,
+        vol.Optional(ATTR_EMOTION): vol.In(EMOTIONS),
+        vol.Optional(ATTR_EMOTION_INTENSITY): vol.In(EMOTION_INTENSITIES),
+        vol.Optional(ATTR_SPEECH_DOMAIN): vol.In(SPEECH_DOMAINS),
+    },
+    extra=vol.PREVENT_EXTRA,
+)
+SOUND_CONTENT_SCHEMA = vol.Schema(
+    {vol.Required(SOUND_SOURCE_FIELD): _sound},
+    extra=vol.PREVENT_EXTRA,
+)
+
+
+def _content(value: Any) -> dict[str, Any]:
+    """Validate and flatten the mutually exclusive content selector."""
+    if not isinstance(value, Mapping):
+        raise vol.Invalid("content must come from the content selector")
+
+    active_choice = value.get(ACTIVE_CHOICE)
+    if active_choice == MESSAGE_CHOICE:
+        message = value.get(MESSAGE_CHOICE)
+        if not isinstance(message, Mapping):
+            raise vol.Invalid("Message requires message options")
+        return dict(MESSAGE_SCHEMA(message))
+    if active_choice == SOUND_CHOICE:
+        sound = value.get(SOUND_CHOICE)
+        if not isinstance(sound, Mapping):
+            raise vol.Invalid("Sound requires a sound source")
+        validated = SOUND_CONTENT_SCHEMA(sound)
+        return {ATTR_SOUND: validated[SOUND_SOURCE_FIELD]}
+    if active_choice == RAW_SSML_CHOICE:
+        return {
+            ATTR_RAW_SSML: _required_text(value.get(RAW_SSML_CHOICE), ATTR_RAW_SSML)
+        }
+    raise vol.Invalid(f"select {MESSAGE_CHOICE}, {SOUND_CHOICE}, or {RAW_SSML_CHOICE}")
+
+
+_LEGACY_CONTENT_FIELDS = {
+    ATTR_TEXT,
+    ATTR_SOUND,
+    ATTR_RAW_SSML,
+    ATTR_VOICE,
+    ATTR_RATE,
+    ATTR_PITCH,
+    ATTR_VOLUME,
+    ATTR_WHISPER,
+    ATTR_EMOTION,
+    ATTR_EMOTION_INTENSITY,
+    ATTR_SPEECH_DOMAIN,
+}
+_MESSAGE_ONLY_FIELDS = _LEGACY_CONTENT_FIELDS - {
+    ATTR_TEXT,
+    ATTR_SOUND,
+    ATTR_RAW_SSML,
+}
+
+
+def _normalize_and_validate_content(data: dict[str, Any]) -> dict[str, Any]:
+    """Flatten new content data and validate legacy YAML combinations."""
+    if ATTR_CONTENT in data:
+        conflicts = _LEGACY_CONTENT_FIELDS.intersection(data)
+        if conflicts:
+            names = ", ".join(sorted(conflicts))
+            raise vol.Invalid(f"content cannot be combined with legacy fields: {names}")
+        content = data.pop(ATTR_CONTENT)
+        data.update(content)
+
+    selected = [
+        field for field in (ATTR_TEXT, ATTR_SOUND, ATTR_RAW_SSML) if data.get(field)
+    ]
+    if len(selected) != 1:
+        raise vol.Invalid("select exactly one of Message, Sound, or Raw SSML")
+
+    content_field = selected[0]
+    if content_field != ATTR_TEXT:
+        incompatible = _MESSAGE_ONLY_FIELDS.intersection(data)
+        if incompatible:
+            names = ", ".join(sorted(incompatible))
+            raise vol.Invalid(
+                f"{content_field} cannot be combined with message options: {names}"
+            )
+
+    if content_field == ATTR_SOUND and _ANNOUNCE_ENTITY_ID.search(data[ATTR_TARGET]):
+        raise vol.Invalid(
+            "Sound requires an Alexa Devices Speak target; Announce targets only "
+            "play the announcement chime"
+        )
     return data
 
 
@@ -185,13 +292,14 @@ SEND_SCHEMA = vol.All(
     vol.Schema(
         {
             vol.Required(ATTR_TARGET): _notify_entity_id,
+            vol.Optional(ATTR_CONTENT): _content,
             vol.Optional(ATTR_TEXT): cv.string,
             vol.Optional(ATTR_SOUND): _sound,
             vol.Optional(ATTR_VOICE): vol.In(VOICE_CHOICES),
             vol.Optional(ATTR_RATE): _rate,
             vol.Optional(ATTR_PITCH): _pitch,
             vol.Optional(ATTR_VOLUME): _volume,
-            vol.Optional(ATTR_WHISPER, default=False): cv.boolean,
+            vol.Optional(ATTR_WHISPER): cv.boolean,
             vol.Optional(ATTR_EMOTION): vol.In(EMOTIONS),
             vol.Optional(ATTR_EMOTION_INTENSITY): vol.In(EMOTION_INTENSITIES),
             vol.Optional(ATTR_SPEECH_DOMAIN): vol.In(SPEECH_DOMAINS),
@@ -205,7 +313,7 @@ SEND_SCHEMA = vol.All(
         },
         extra=vol.PREVENT_EXTRA,
     ),
-    _validate_content,
+    _normalize_and_validate_content,
 )
 
 

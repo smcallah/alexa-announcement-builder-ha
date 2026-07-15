@@ -34,19 +34,9 @@ def test_service_metadata_describes_all_schema_fields() -> None:
     fields = metadata["send"]["fields"]
     assert set(fields) == {
         "target",
-        "text",
-        "sound",
-        "voice",
-        "rate",
-        "pitch",
-        "volume",
-        "whisper",
-        "emotion",
-        "emotion_intensity",
-        "domain",
+        "content",
         "break_before_ms",
         "break_after_ms",
-        "raw_ssml",
     }
 
 
@@ -61,7 +51,9 @@ def test_service_translations_cover_every_field() -> None:
 
 def test_voice_selector_lists_every_supported_voice() -> None:
     metadata = yaml.safe_load((INTEGRATION / "services.yaml").read_text("utf-8"))
-    selector = metadata["send"]["fields"]["voice"]["selector"]["select"]
+    choices = metadata["send"]["fields"]["content"]["selector"]["choose"]["choices"]
+    message_fields = choices["Message"]["selector"]["object"]["fields"]
+    selector = message_fields["voice"]["selector"]["select"]
 
     assert selector["mode"] == "dropdown"
     assert tuple(option["value"] for option in selector["options"]) == (
@@ -83,7 +75,13 @@ def test_target_selector_only_lists_alexa_device_notify_entities() -> None:
 
 def test_sound_selector_offers_curated_and_custom_sources() -> None:
     metadata = yaml.safe_load((INTEGRATION / "services.yaml").read_text("utf-8"))
-    choices = metadata["send"]["fields"]["sound"]["selector"]["choose"]["choices"]
+    content_choices = metadata["send"]["fields"]["content"]["selector"]["choose"][
+        "choices"
+    ]
+    sound_fields = content_choices["Sound"]["selector"]["object"]["fields"]
+    assert tuple(sound_fields) == ("source",)
+    assert sound_fields["source"]["required"] is True
+    choices = sound_fields["source"]["selector"]["choose"]["choices"]
 
     assert tuple(choices) == ("Common sound", "Custom sound")
     common = choices["Common sound"]["selector"]["select"]
@@ -97,7 +95,10 @@ def test_sound_selector_offers_curated_and_custom_sources() -> None:
 
 def test_prosody_selectors_offer_named_and_bounded_custom_values() -> None:
     metadata = yaml.safe_load((INTEGRATION / "services.yaml").read_text("utf-8"))
-    fields = metadata["send"]["fields"]
+    content_choices = metadata["send"]["fields"]["content"]["selector"]["choose"][
+        "choices"
+    ]
+    fields = content_choices["Message"]["selector"]["object"]["fields"]
 
     expected = {
         "rate": ("Named rate", "Enter %-age", 20, 200, "%"),
@@ -122,3 +123,31 @@ def test_prosody_selectors_offer_named_and_bounded_custom_values() -> None:
             "unit_of_measurement": unit,
             "mode": "box",
         }
+
+
+def test_content_selector_makes_content_and_message_options_exclusive() -> None:
+    metadata = yaml.safe_load((INTEGRATION / "services.yaml").read_text("utf-8"))
+    content = metadata["send"]["fields"]["content"]
+    choices = content["selector"]["choose"]["choices"]
+
+    assert content["required"] is True
+    assert tuple(choices) == ("Message", "Sound", "Raw SSML")
+    assert tuple(next(iter(choice["selector"])) for choice in choices.values()) == (
+        "object",
+        "object",
+        "text",
+    )
+    message_fields = choices["Message"]["selector"]["object"]["fields"]
+    assert tuple(message_fields) == (
+        "text",
+        "voice",
+        "rate",
+        "pitch",
+        "volume",
+        "whisper",
+        "emotion",
+        "emotion_intensity",
+        "domain",
+    )
+    assert message_fields["text"]["required"] is True
+    assert choices["Raw SSML"]["selector"] == {"text": {"multiline": True}}
