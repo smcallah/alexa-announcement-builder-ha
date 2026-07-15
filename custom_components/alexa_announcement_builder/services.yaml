@@ -4,12 +4,14 @@ send:
   fields:
     target:
       name: Target
-      description: Alexa Devices notify entity that will receive the SSML.
+      description: Alexa Devices Speak or Announce notify entity that will receive the SSML.
       required: true
       example: notify.office_echo_speak
       selector:
         entity:
-          domain: notify
+          filter:
+            - integration: alexa_devices
+              domain: notify
     text:
       name: Text
       description: Plain text to escape and convert to SSML. Required unless raw SSML is supplied.
