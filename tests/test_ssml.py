@@ -175,8 +175,8 @@ def test_content_sound_flattens_only_the_active_choice() -> None:
             "https://audio.example.test/chime.mp3",
         ),
         (
-            '<audio src="soundbank://soundlibrary/home/amzn_sfx_door_knock_01"/>',
-            "soundbank://soundlibrary/home/amzn_sfx_door_knock_01",
+            '<audio src="soundbank://soundlibrary/doors/doors_knocks/knocks_01"/>',
+            "soundbank://soundlibrary/doors/doors_knocks/knocks_01",
         ),
     ],
 )
@@ -202,6 +202,12 @@ def test_content_sound_accepts_a_custom_source_as_one_scalar_value(
 @pytest.mark.parametrize("source", COMMON_SOUNDS.values())
 def test_every_common_sound_source_is_valid(source: str) -> None:
     assert normalize_sound_source(source) == source
+
+
+def test_door_knock_preset_uses_current_sound_library_source() -> None:
+    assert COMMON_SOUNDS["door_knock"] == (
+        "soundbank://soundlibrary/doors/doors_knocks/knocks_01"
+    )
 
 
 @pytest.mark.parametrize(
