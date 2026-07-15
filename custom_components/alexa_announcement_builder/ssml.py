@@ -14,6 +14,7 @@ from .const import (
     ATTR_PITCH,
     ATTR_RATE,
     ATTR_RAW_SSML,
+    ATTR_SOUND,
     ATTR_SPEECH_DOMAIN,
     ATTR_TEXT,
     ATTR_VOICE,
@@ -31,38 +32,42 @@ def build_ssml(data: Mapping[str, Any]) -> str:
     if raw_ssml := data.get(ATTR_RAW_SSML):
         return str(raw_ssml)
 
-    body = escape(str(data[ATTR_TEXT]), quote=False)
-
-    prosody_attributes = []
-    for field in (ATTR_RATE, ATTR_PITCH, ATTR_VOLUME):
-        if value := data.get(field):
-            prosody_attributes.append(f'{field}="{escape(str(value), quote=True)}"')
-    if prosody_attributes:
-        body = f"<prosody {' '.join(prosody_attributes)}>{body}</prosody>"
-
-    if data.get(ATTR_WHISPER, False):
-        body = f'<amazon:effect name="whispered">{body}</amazon:effect>'
-
-    if emotion := data.get(ATTR_EMOTION):
-        intensity = data.get(ATTR_EMOTION_INTENSITY, DEFAULT_EMOTION_INTENSITY)
-        body = (
-            f'<amazon:emotion name="{emotion}" intensity="{intensity}">'
-            f"{body}</amazon:emotion>"
-        )
-
-    if speech_domain := data.get(ATTR_SPEECH_DOMAIN):
-        body = f'<amazon:domain name="{speech_domain}">{body}</amazon:domain>'
-
+    sound = data.get(ATTR_SOUND)
     voice = data.get(ATTR_VOICE, DEFAULT_VOICE)
-    if voice in NAMED_VOICES:
-        escaped_voice_name = escape(str(voice), quote=True)
-        body = f'<voice name="{escaped_voice_name}">{body}</voice>'
+    if sound:
+        body = f'<audio src="{escape(str(sound), quote=True)}"/>'
+    else:
+        body = escape(str(data[ATTR_TEXT]), quote=False)
+
+        prosody_attributes = []
+        for field in (ATTR_RATE, ATTR_PITCH, ATTR_VOLUME):
+            if value := data.get(field):
+                prosody_attributes.append(f'{field}="{escape(str(value), quote=True)}"')
+        if prosody_attributes:
+            body = f"<prosody {' '.join(prosody_attributes)}>{body}</prosody>"
+
+        if data.get(ATTR_WHISPER, False):
+            body = f'<amazon:effect name="whispered">{body}</amazon:effect>'
+
+        if emotion := data.get(ATTR_EMOTION):
+            intensity = data.get(ATTR_EMOTION_INTENSITY, DEFAULT_EMOTION_INTENSITY)
+            body = (
+                f'<amazon:emotion name="{emotion}" intensity="{intensity}">'
+                f"{body}</amazon:emotion>"
+            )
+
+        if speech_domain := data.get(ATTR_SPEECH_DOMAIN):
+            body = f'<amazon:domain name="{speech_domain}">{body}</amazon:domain>'
+
+        if voice in NAMED_VOICES:
+            escaped_voice_name = escape(str(voice), quote=True)
+            body = f'<voice name="{escaped_voice_name}">{body}</voice>'
 
     parts = []
     if ATTR_BREAK_BEFORE_MS in data:
         break_before = data[ATTR_BREAK_BEFORE_MS]
         parts.append(f'<break time="{break_before}ms"/>')
-    if voice == "original_alexa":
+    if not sound and voice == "original_alexa":
         parts.append(ORIGINAL_ALEXA_PREFIX)
     parts.append(body)
     if ATTR_BREAK_AFTER_MS in data:

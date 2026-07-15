@@ -5,7 +5,10 @@ from pathlib import Path
 
 import yaml
 
-from custom_components.alexa_announcement_builder.const import NAMED_VOICES
+from custom_components.alexa_announcement_builder.const import (
+    COMMON_SOUNDS,
+    NAMED_VOICES,
+)
 
 ROOT = Path(__file__).parents[1]
 INTEGRATION = ROOT / "custom_components" / "alexa_announcement_builder"
@@ -32,6 +35,7 @@ def test_service_metadata_describes_all_schema_fields() -> None:
     assert set(fields) == {
         "target",
         "text",
+        "sound",
         "voice",
         "rate",
         "pitch",
@@ -44,6 +48,15 @@ def test_service_metadata_describes_all_schema_fields() -> None:
         "break_after_ms",
         "raw_ssml",
     }
+
+
+def test_service_translations_cover_every_field() -> None:
+    metadata = yaml.safe_load((INTEGRATION / "services.yaml").read_text("utf-8"))
+    expected_fields = set(metadata["send"]["fields"])
+
+    for path in (INTEGRATION / "strings.json", INTEGRATION / "translations/en.json"):
+        translated = json.loads(path.read_text(encoding="utf-8"))
+        assert set(translated["services"]["send"]["fields"]) == expected_fields
 
 
 def test_voice_selector_lists_every_supported_voice() -> None:
@@ -66,6 +79,20 @@ def test_target_selector_only_lists_alexa_device_notify_entities() -> None:
     assert selector == {
         "filter": [{"integration": "alexa_devices", "domain": "notify"}]
     }
+
+
+def test_sound_selector_offers_curated_and_custom_sources() -> None:
+    metadata = yaml.safe_load((INTEGRATION / "services.yaml").read_text("utf-8"))
+    choices = metadata["send"]["fields"]["sound"]["selector"]["choose"]["choices"]
+
+    assert tuple(choices) == ("Common sound", "Custom sound")
+    common = choices["Common sound"]["selector"]["select"]
+    assert common["mode"] == "dropdown"
+    assert tuple(option["value"] for option in common["options"]) == tuple(
+        COMMON_SOUNDS
+    )
+    assert all(option["label"] for option in common["options"])
+    assert choices["Custom sound"]["selector"] == {"text": {"multiline": False}}
 
 
 def test_prosody_selectors_offer_named_and_bounded_custom_values() -> None:

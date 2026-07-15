@@ -1,9 +1,9 @@
 # Alexa Announcement Builder
 
 Alexa Announcement Builder is a service-only Home Assistant custom integration
-that turns plain text and a small set of options into Alexa-compatible SSML. It
-then sends that SSML through an existing Alexa Devices notify entity using
-Home Assistant's `notify.send_message` action.
+that turns plain text or a selected sound and a small set of options into
+Alexa-compatible SSML. It then sends that SSML through an existing Alexa
+Devices notify entity using Home Assistant's `notify.send_message` action.
 
 The integration creates no entities and does not connect to Amazon itself. An
 Alexa Devices integration that provides notify entities such as
@@ -76,6 +76,48 @@ volume:
 Custom rate values are limited to 20 through 200, pitch values to -33.3 through
 50, and volume adjustments to -6 through 6 dB.
 
+## Sound selection
+
+The `sound` selector can send one sound instead of a spoken message. Choose a
+curated Alexa sound from the **Common sound** dropdown:
+
+```yaml
+action: alexa_announcement_builder.send
+data:
+  target: notify.office_echo_speak
+  sound:
+    active_choice: Common sound
+    Common sound: doorbell_chime
+```
+
+The **Custom sound** input accepts any of these forms:
+
+- A public HTTPS URL for an Alexa-compatible MP3.
+- An Alexa sound-library URI beginning with
+  `soundbank://soundlibrary/`.
+- A complete `<audio src="..."/>` tag copied from Amazon's sound library.
+
+For example:
+
+```yaml
+action: alexa_announcement_builder.send
+data:
+  target: notify.office_echo_speak
+  sound:
+    active_choice: Custom sound
+    Custom sound: '<audio src="soundbank://soundlibrary/air/fire_extinguisher/fire_extinguisher_04"/>'
+```
+
+Copied tags are parsed and rebuilt rather than passed through as trusted
+markup. Custom HTTPS audio must be publicly reachable with a trusted TLS
+certificate and must meet Amazon's MP3 encoding, sample-rate, bit-rate, and
+duration requirements. The integration validates the URL format but does not
+download or inspect the remote file.
+
+In this version, `sound` sends one standalone sound and cannot be combined with
+`text` or `raw_ssml` in the same action. Voice and speech-effect fields are
+ignored for a sound; optional before/after breaks still apply.
+
 ## Voice selection
 
 The `voice` dropdown puts both Alexa defaults first, followed by every supported
@@ -138,7 +180,8 @@ data:
 ```
 
 Plain `text` is XML-escaped automatically. `raw_ssml` is deliberately not
-escaped or validated and must not contain outer `<speak>` tags.
+escaped or validated and must not contain outer `<speak>` tags. Supply at least
+one of `text`, `sound`, or `raw_ssml`.
 
 ## Alexa SSML caveats
 

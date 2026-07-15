@@ -20,12 +20,14 @@ from .const import (
     ATTR_PITCH,
     ATTR_RATE,
     ATTR_RAW_SSML,
+    ATTR_SOUND,
     ATTR_SPEECH_DOMAIN,
     ATTR_TARGET,
     ATTR_TEXT,
     ATTR_VOICE,
     ATTR_VOLUME,
     ATTR_WHISPER,
+    COMMON_SOUNDS,
     DOMAIN,
     EMOTION_INTENSITIES,
     EMOTIONS,
@@ -36,6 +38,7 @@ from .const import (
     VOICE_CHOICES,
     VOLUMES,
 )
+from .sound import normalize_sound_source
 from .ssml import build_ssml
 
 _LOGGER = logging.getLogger(__name__)
@@ -46,6 +49,8 @@ NAMED_PITCH_CHOICE = "Named pitch"
 NAMED_VOLUME_CHOICE = "Named volume"
 PERCENTAGE_CHOICE = "Enter %-age"
 DB_ADJUSTMENT_CHOICE = "Enter dB adjustment"
+COMMON_SOUND_CHOICE = "Common sound"
+CUSTOM_SOUND_CHOICE = "Custom sound"
 
 
 def _notify_entity_id(value: Any) -> str:
@@ -147,10 +152,32 @@ def _volume(value: Any) -> str:
     )
 
 
-def _validate_message(data: dict[str, Any]) -> dict[str, Any]:
-    """Validate conditional message and voice fields."""
-    if not data.get(ATTR_TEXT) and not data.get(ATTR_RAW_SSML):
-        raise vol.Invalid("one of text or raw_ssml is required")
+def _sound(value: Any) -> str:
+    """Validate and normalize a Home Assistant sound choose-selector value."""
+    if not isinstance(value, Mapping):
+        raise vol.Invalid("sound must come from its common or custom selector")
+
+    active_choice = value.get(ACTIVE_CHOICE)
+    if active_choice == COMMON_SOUND_CHOICE:
+        selected = value.get(COMMON_SOUND_CHOICE)
+        if not isinstance(selected, str) or selected not in COMMON_SOUNDS:
+            raise vol.Invalid("unsupported common sound")
+        return COMMON_SOUNDS[selected]
+
+    if active_choice != CUSTOM_SOUND_CHOICE:
+        raise vol.Invalid(
+            f"select either {COMMON_SOUND_CHOICE} or {CUSTOM_SOUND_CHOICE}"
+        )
+    return normalize_sound_source(value.get(CUSTOM_SOUND_CHOICE))
+
+
+def _validate_content(data: dict[str, Any]) -> dict[str, Any]:
+    """Validate conditional message and sound fields."""
+    sound = data.get(ATTR_SOUND)
+    if sound and (data.get(ATTR_TEXT) or data.get(ATTR_RAW_SSML)):
+        raise vol.Invalid("sound cannot be combined with text or raw_ssml")
+    if not data.get(ATTR_TEXT) and not data.get(ATTR_RAW_SSML) and not sound:
+        raise vol.Invalid("one of text, raw_ssml, or sound is required")
     return data
 
 
@@ -159,6 +186,7 @@ SEND_SCHEMA = vol.All(
         {
             vol.Required(ATTR_TARGET): _notify_entity_id,
             vol.Optional(ATTR_TEXT): cv.string,
+            vol.Optional(ATTR_SOUND): _sound,
             vol.Optional(ATTR_VOICE): vol.In(VOICE_CHOICES),
             vol.Optional(ATTR_RATE): _rate,
             vol.Optional(ATTR_PITCH): _pitch,
@@ -177,7 +205,7 @@ SEND_SCHEMA = vol.All(
         },
         extra=vol.PREVENT_EXTRA,
     ),
-    _validate_message,
+    _validate_content,
 )
 
 

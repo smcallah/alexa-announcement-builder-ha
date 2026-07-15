@@ -56,6 +56,35 @@ async def test_service_forwards_to_notify_send_message() -> None:
     )
 
 
+async def test_service_forwards_selected_sound_to_notify() -> None:
+    services = SimpleNamespace(async_register=Mock(), async_call=AsyncMock())
+    hass = SimpleNamespace(services=services)
+    await async_setup(hass, {})
+    handler = services.async_register.call_args.args[2]
+
+    data = SEND_SCHEMA(
+        {
+            "target": "notify.office_echo_speak",
+            "sound": {
+                "active_choice": "Common sound",
+                "Common sound": "positive_response",
+            },
+        }
+    )
+    await handler(SimpleNamespace(data=data))
+
+    services.async_call.assert_awaited_once_with(
+        "notify",
+        "send_message",
+        {
+            "message": '<audio src="soundbank://soundlibrary/ui/gameshow/'
+            'amzn_ui_sfx_gameshow_positive_response_01"/>'
+        },
+        target={"entity_id": "notify.office_echo_speak"},
+        blocking=True,
+    )
+
+
 async def test_forwarding_error_propagates() -> None:
     services = SimpleNamespace(
         async_register=Mock(), async_call=AsyncMock(side_effect=RuntimeError("failed"))
