@@ -13,12 +13,12 @@
   "services": {
     "send": {
       "name": "Send Alexa announcement",
-      "description": "Build Alexa SSML and send it through a notify entity.",
+      "description": "Build an ordered Alexa SSML sequence and send it through a notify entity.",
       "fields": {
-        "target": { "name": "Target", "description": "Alexa Devices Speak or Announce notify entity. Sound content requires a Speak target." },
-        "content": { "name": "Content", "description": "Choose one content type: Message, Sound, or Raw SSML." },
-        "break_before_ms": { "name": "Break before", "description": "Silent break before a generated message or sound, in milliseconds." },
-        "break_after_ms": { "name": "Break after", "description": "Silent break after a generated message or sound, in milliseconds." }
+        "target": { "name": "Target", "description": "Alexa Devices Speak or Announce notify entity. A sequence containing Sound requires a Speak target." },
+        "sequence": { "name": "Sequence", "description": "Add Message, Sound, or Raw SSML items and drag them into playback order." },
+        "break_before_ms": { "name": "Break before", "description": "Silent break before the complete sequence, in milliseconds." },
+        "break_after_ms": { "name": "Break after", "description": "Silent break after the complete sequence, in milliseconds." }
       }
     }
   }

@@ -163,6 +163,96 @@ def test_content_sound_flattens_only_the_active_choice() -> None:
     }
 
 
+def test_sequence_preserves_order_and_per_message_options() -> None:
+    data = SEND_SCHEMA(
+        {
+            "target": "notify.office_echo_speak",
+            "sequence": [
+                {
+                    "content": {
+                        "active_choice": "Message",
+                        "Message": {"text": "First.", "voice": "Joanna"},
+                    }
+                },
+                {
+                    "content": {
+                        "active_choice": "Sound",
+                        "Sound": "door_knock",
+                    }
+                },
+                {
+                    "content": {
+                        "active_choice": "Message",
+                        "Message": {
+                            "text": "Second.",
+                            "voice": "original_alexa",
+                            "rate": {
+                                "active_choice": "Named rate",
+                                "Named rate": "slow",
+                            },
+                        },
+                    }
+                },
+                {
+                    "content": {
+                        "active_choice": "Raw SSML",
+                        "Raw SSML": '<break time="1s"/>',
+                    }
+                },
+            ],
+            "break_before_ms": 100,
+            "break_after_ms": 250,
+        }
+    )
+
+    assert data == {
+        "target": "notify.office_echo_speak",
+        "sequence": [
+            {"text": "First.", "voice": "Joanna"},
+            {"sound": COMMON_SOUNDS["door_knock"]},
+            {"text": "Second.", "voice": "original_alexa", "rate": "slow"},
+            {"raw_ssml": '<break time="1s"/>'},
+        ],
+        "break_before_ms": 100,
+        "break_after_ms": 250,
+    }
+    assert build_ssml(data) == (
+        '<break time="100ms"/>'
+        '<voice name="Joanna">First.</voice>'
+        '<audio src="soundbank://soundlibrary/doors/doors_knocks/knocks_01"/>'
+        '<voice name="Kendra"> </voice>'
+        '<prosody rate="slow">Second.</prosody>'
+        '<break time="1s"/>'
+        '<break time="250ms"/>'
+    )
+
+
+def test_sequence_message_only_is_valid_for_announce_target() -> None:
+    data = SEND_SCHEMA(
+        {
+            "target": "notify.office_echo_announce",
+            "sequence": [
+                {
+                    "content": {
+                        "active_choice": "Message",
+                        "Message": {"text": "Front door open."},
+                    }
+                },
+                {
+                    "content": {
+                        "active_choice": "Message",
+                        "Message": {"text": "Please close it.", "voice": "Matthew"},
+                    }
+                },
+            ],
+        }
+    )
+
+    assert build_ssml(data) == (
+        'Front door open.<voice name="Matthew">Please close it.</voice>'
+    )
+
+
 @pytest.mark.parametrize(
     ("supplied", "expected"),
     [
@@ -528,6 +618,90 @@ def test_schema_rejects_sound_sent_to_announce_target(target: str) -> None:
                     "active_choice": "Sound",
                     "Sound": "doorbell_chime",
                 },
+            }
+        )
+
+
+def test_schema_rejects_sequence_with_sound_sent_to_announce_target() -> None:
+    with pytest.raises(vol.Invalid, match="sequence containing Sound"):
+        SEND_SCHEMA(
+            {
+                "target": "notify.office_echo_announce",
+                "sequence": [
+                    {
+                        "content": {
+                            "active_choice": "Message",
+                            "Message": {"text": "Listen."},
+                        }
+                    },
+                    {
+                        "content": {
+                            "active_choice": "Sound",
+                            "Sound": "doorbell_chime",
+                        }
+                    },
+                ],
+            }
+        )
+
+
+@pytest.mark.parametrize(
+    "sequence",
+    [
+        [],
+        "Message",
+        [{}],
+        [{"content": {"active_choice": "Message"}}],
+        [
+            {
+                "content": {
+                    "active_choice": "Message",
+                    "Message": {"text": "Hello."},
+                },
+                "extra": True,
+            }
+        ],
+    ],
+)
+def test_schema_rejects_invalid_sequence(sequence: object) -> None:
+    with pytest.raises(vol.Invalid):
+        SEND_SCHEMA(
+            {
+                "target": "notify.office_echo_speak",
+                "sequence": sequence,
+            }
+        )
+
+
+@pytest.mark.parametrize("single_field", ["content", "text", "sound", "raw_ssml"])
+def test_schema_rejects_sequence_mixed_with_single_content(
+    single_field: str,
+) -> None:
+    value: object = "Legacy content."
+    if single_field == "content":
+        value = {
+            "active_choice": "Message",
+            "Message": {"text": "Single content."},
+        }
+    elif single_field == "sound":
+        value = {
+            "active_choice": "Common sound",
+            "Common sound": "doorbell_chime",
+        }
+
+    with pytest.raises(vol.Invalid, match="single-content fields"):
+        SEND_SCHEMA(
+            {
+                "target": "notify.office_echo_speak",
+                "sequence": [
+                    {
+                        "content": {
+                            "active_choice": "Message",
+                            "Message": {"text": "Sequence content."},
+                        }
+                    }
+                ],
+                single_field: value,
             }
         )
 

@@ -5,6 +5,7 @@ SERVICE_SEND = "send"
 
 ATTR_TARGET = "target"
 ATTR_CONTENT = "content"
+ATTR_SEQUENCE = "sequence"
 ATTR_TEXT = "text"
 ATTR_SOUND = "sound"
 ATTR_VOICE = "voice"

@@ -14,6 +14,7 @@ from .const import (
     ATTR_PITCH,
     ATTR_RATE,
     ATTR_RAW_SSML,
+    ATTR_SEQUENCE,
     ATTR_SOUND,
     ATTR_SPEECH_DOMAIN,
     ATTR_TEXT,
@@ -27,8 +28,8 @@ from .const import (
 )
 
 
-def build_ssml(data: Mapping[str, Any]) -> str:
-    """Build Alexa-compatible SSML contents from validated service data."""
+def _build_content(data: Mapping[str, Any]) -> str:
+    """Build one validated message, sound, or raw SSML item."""
     if raw_ssml := data.get(ATTR_RAW_SSML):
         return str(raw_ssml)
 
@@ -64,11 +65,25 @@ def build_ssml(data: Mapping[str, Any]) -> str:
             body = f'<voice name="{escaped_voice_name}">{body}</voice>'
 
     parts = []
+    if not sound and voice == "original_alexa":
+        parts.append(ORIGINAL_ALEXA_PREFIX)
+    parts.append(body)
+    return "".join(parts)
+
+
+def build_ssml(data: Mapping[str, Any]) -> str:
+    """Build Alexa-compatible SSML contents from validated service data."""
+    if ATTR_SEQUENCE in data:
+        body = "".join(_build_content(item) for item in data[ATTR_SEQUENCE])
+    else:
+        if raw_ssml := data.get(ATTR_RAW_SSML):
+            return str(raw_ssml)
+        body = _build_content(data)
+
+    parts = []
     if ATTR_BREAK_BEFORE_MS in data:
         break_before = data[ATTR_BREAK_BEFORE_MS]
         parts.append(f'<break time="{break_before}ms"/>')
-    if not sound and voice == "original_alexa":
-        parts.append(ORIGINAL_ALEXA_PREFIX)
     parts.append(body)
     if ATTR_BREAK_AFTER_MS in data:
         break_after = data[ATTR_BREAK_AFTER_MS]

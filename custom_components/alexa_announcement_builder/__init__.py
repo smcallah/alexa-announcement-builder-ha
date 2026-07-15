@@ -22,6 +22,7 @@ from .const import (
     ATTR_PITCH,
     ATTR_RATE,
     ATTR_RAW_SSML,
+    ATTR_SEQUENCE,
     ATTR_SOUND,
     ATTR_SPEECH_DOMAIN,
     ATTR_TARGET,
@@ -235,6 +236,24 @@ def _content(value: Any) -> dict[str, Any]:
     raise vol.Invalid(f"select {MESSAGE_CHOICE}, {SOUND_CHOICE}, or {RAW_SSML_CHOICE}")
 
 
+def _sequence(value: Any) -> list[dict[str, Any]]:
+    """Validate and flatten an ordered list of content-selector items."""
+    if not isinstance(value, list):
+        raise vol.Invalid("sequence must come from the sequence selector")
+    if not value:
+        raise vol.Invalid("sequence must contain at least one item")
+
+    normalized = []
+    for index, item in enumerate(value, start=1):
+        if not isinstance(item, Mapping) or set(item) != {ATTR_CONTENT}:
+            raise vol.Invalid(f"sequence item {index} must contain only content")
+        try:
+            normalized.append(_content(item[ATTR_CONTENT]))
+        except vol.Invalid as err:
+            raise vol.Invalid(f"sequence item {index}: {err}") from err
+    return normalized
+
+
 _LEGACY_CONTENT_FIELDS = {
     ATTR_TEXT,
     ATTR_SOUND,
@@ -257,6 +276,22 @@ _MESSAGE_ONLY_FIELDS = _LEGACY_CONTENT_FIELDS - {
 
 def _normalize_and_validate_content(data: dict[str, Any]) -> dict[str, Any]:
     """Flatten new content data and validate legacy YAML combinations."""
+    if ATTR_SEQUENCE in data:
+        conflicts = ({ATTR_CONTENT} | _LEGACY_CONTENT_FIELDS).intersection(data)
+        if conflicts:
+            names = ", ".join(sorted(conflicts))
+            raise vol.Invalid(
+                f"sequence cannot be combined with single-content fields: {names}"
+            )
+        if _ANNOUNCE_ENTITY_ID.search(data[ATTR_TARGET]) and any(
+            item.get(ATTR_SOUND) for item in data[ATTR_SEQUENCE]
+        ):
+            raise vol.Invalid(
+                "A sequence containing Sound requires an Alexa Devices Speak "
+                "target; Announce targets only play the announcement chime"
+            )
+        return data
+
     if ATTR_CONTENT in data:
         conflicts = _LEGACY_CONTENT_FIELDS.intersection(data)
         if conflicts:
@@ -292,6 +327,7 @@ SEND_SCHEMA = vol.All(
     vol.Schema(
         {
             vol.Required(ATTR_TARGET): _notify_entity_id,
+            vol.Optional(ATTR_SEQUENCE): _sequence,
             vol.Optional(ATTR_CONTENT): _content,
             vol.Optional(ATTR_TEXT): cv.string,
             vol.Optional(ATTR_SOUND): _sound,
