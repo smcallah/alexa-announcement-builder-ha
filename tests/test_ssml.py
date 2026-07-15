@@ -227,6 +227,59 @@ def test_sequence_preserves_order_and_per_message_options() -> None:
     )
 
 
+def test_flat_sequence_selector_preserves_order_and_per_message_options() -> None:
+    data = SEND_SCHEMA(
+        {
+            "target": "notify.office_echo_speak",
+            "sequence": [
+                {
+                    "content_type": "Message",
+                    "text": "First.",
+                    "voice": "Joanna",
+                },
+                {"content_type": "Sound", "sound": "Door knock"},
+                {
+                    "content_type": "Message",
+                    "text": "Second.",
+                    "voice": "original_alexa",
+                    "rate": {
+                        "active_choice": "Named rate",
+                        "Named rate": "slow",
+                    },
+                },
+                {"content_type": "Raw SSML", "raw_ssml": '<break time="1s"/>'},
+            ],
+        }
+    )
+
+    assert data["sequence"] == [
+        {"text": "First.", "voice": "Joanna"},
+        {"sound": COMMON_SOUNDS["door_knock"]},
+        {"text": "Second.", "voice": "original_alexa", "rate": "slow"},
+        {"raw_ssml": '<break time="1s"/>'},
+    ]
+
+
+def test_flat_sequence_content_type_ignores_inactive_fields() -> None:
+    data = SEND_SCHEMA(
+        {
+            "target": "notify.office_echo_speak",
+            "sequence": [
+                {
+                    "content_type": "Sound",
+                    "text": "Stale message.",
+                    "sound": "Doorbell chime",
+                    "raw_ssml": '<break time="5s"/>',
+                    "voice": "Joanna",
+                    "whisper": True,
+                }
+            ],
+        }
+    )
+
+    assert data["sequence"] == [{"sound": COMMON_SOUNDS["doorbell_chime"]}]
+
+
 def test_sequence_message_only_is_valid_for_announce_target() -> None:
     data = SEND_SCHEMA(
         {

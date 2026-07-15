@@ -5,6 +5,7 @@ SERVICE_SEND = "send"
 
 ATTR_TARGET = "target"
 ATTR_CONTENT = "content"
+ATTR_CONTENT_TYPE = "content_type"
 ATTR_SEQUENCE = "sequence"
 ATTR_TEXT = "text"
 ATTR_SOUND = "sound"
@@ -44,6 +45,20 @@ COMMON_SOUNDS = {
     "fire_extinguisher": (
         "soundbank://soundlibrary/air/fire_extinguisher/fire_extinguisher_04"
     ),
+}
+COMMON_SOUND_NAMES = {
+    "doorbell_chime": "Doorbell chime",
+    "door_knock": "Door knock",
+    "applause": "Applause",
+    "positive_response": "Positive response",
+    "negative_response": "Negative response",
+    "game_show_intro": "Game show intro",
+    "alarm_buzzer": "Alarm buzzer",
+    "dog_bark": "Dog bark",
+    "cat_meow": "Cat meow",
+    "rooster_crow": "Rooster crow",
+    "thunder": "Thunder",
+    "fire_extinguisher": "Fire extinguisher",
 }
 
 NAMED_VOICES = (

@@ -17,6 +17,7 @@ from .const import (
     ATTR_BREAK_AFTER_MS,
     ATTR_BREAK_BEFORE_MS,
     ATTR_CONTENT,
+    ATTR_CONTENT_TYPE,
     ATTR_EMOTION,
     ATTR_EMOTION_INTENSITY,
     ATTR_PITCH,
@@ -30,6 +31,7 @@ from .const import (
     ATTR_VOICE,
     ATTR_VOLUME,
     ATTR_WHISPER,
+    COMMON_SOUND_NAMES,
     COMMON_SOUNDS,
     DOMAIN,
     EMOTION_INTENSITIES,
@@ -184,6 +186,11 @@ def _content_sound(value: Any) -> str:
         raise vol.Invalid("Sound requires a common sound or custom source")
     if value in COMMON_SOUNDS:
         return COMMON_SOUNDS[value]
+    sound_key = next(
+        (key for key, name in COMMON_SOUND_NAMES.items() if value == name), None
+    )
+    if sound_key is not None:
+        return COMMON_SOUNDS[sound_key]
     return normalize_sound_source(value)
 
 
@@ -237,7 +244,7 @@ def _content(value: Any) -> dict[str, Any]:
 
 
 def _sequence(value: Any) -> list[dict[str, Any]]:
-    """Validate and flatten an ordered list of content-selector items."""
+    """Validate and flatten an ordered list of sequence-selector items."""
     if not isinstance(value, list):
         raise vol.Invalid("sequence must come from the sequence selector")
     if not value:
@@ -245,13 +252,63 @@ def _sequence(value: Any) -> list[dict[str, Any]]:
 
     normalized = []
     for index, item in enumerate(value, start=1):
-        if not isinstance(item, Mapping) or set(item) != {ATTR_CONTENT}:
-            raise vol.Invalid(f"sequence item {index} must contain only content")
+        if not isinstance(item, Mapping):
+            raise vol.Invalid(f"sequence item {index} must be an object")
         try:
-            normalized.append(_content(item[ATTR_CONTENT]))
+            if set(item) == {ATTR_CONTENT}:
+                # Keep automations created with the original nested selector valid.
+                normalized.append(_content(item[ATTR_CONTENT]))
+            else:
+                normalized.append(_flat_sequence_item(item))
         except vol.Invalid as err:
             raise vol.Invalid(f"sequence item {index}: {err}") from err
     return normalized
+
+
+_SEQUENCE_ITEM_FIELDS = {
+    ATTR_CONTENT_TYPE,
+    ATTR_TEXT,
+    ATTR_SOUND,
+    ATTR_RAW_SSML,
+    ATTR_VOICE,
+    ATTR_RATE,
+    ATTR_PITCH,
+    ATTR_VOLUME,
+    ATTR_WHISPER,
+    ATTR_EMOTION,
+    ATTR_EMOTION_INTENSITY,
+    ATTR_SPEECH_DOMAIN,
+}
+_MESSAGE_ITEM_FIELDS = _SEQUENCE_ITEM_FIELDS - {
+    ATTR_CONTENT_TYPE,
+    ATTR_SOUND,
+    ATTR_RAW_SSML,
+}
+
+
+def _flat_sequence_item(value: Mapping[str, Any]) -> dict[str, Any]:
+    """Normalize one item from the non-nested sequence editor."""
+    extra = set(value) - _SEQUENCE_ITEM_FIELDS
+    if extra:
+        names = ", ".join(sorted(extra))
+        raise vol.Invalid(f"unsupported fields: {names}")
+
+    content_type = value.get(ATTR_CONTENT_TYPE)
+    if content_type == MESSAGE_CHOICE:
+        message = {
+            field: field_value
+            for field, field_value in value.items()
+            if field in _MESSAGE_ITEM_FIELDS
+        }
+        return dict(MESSAGE_SCHEMA(message))
+    if content_type == SOUND_CHOICE:
+        return {ATTR_SOUND: _content_sound(value.get(ATTR_SOUND))}
+    if content_type == RAW_SSML_CHOICE:
+        return {ATTR_RAW_SSML: _required_text(value.get(ATTR_RAW_SSML), ATTR_RAW_SSML)}
+    raise vol.Invalid(
+        f"select {MESSAGE_CHOICE}, {SOUND_CHOICE}, or {RAW_SSML_CHOICE} "
+        "as the content type"
+    )
 
 
 _LEGACY_CONTENT_FIELDS = {
