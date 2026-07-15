@@ -122,6 +122,112 @@ def test_schema_accepts_raw_ssml_without_text() -> None:
     assert data["raw_ssml"] == '<break time="1s"/>'
 
 
+def test_schema_normalizes_named_prosody_values() -> None:
+    data = SEND_SCHEMA(
+        {
+            "target": "notify.office_echo_speak",
+            "text": "Hello.",
+            "rate": {"active_choice": "Named rate", "Named rate": "fast"},
+            "pitch": {"active_choice": "Named pitch", "Named pitch": "low"},
+            "volume": {
+                "active_choice": "Named volume",
+                "Named volume": "x-loud",
+            },
+        }
+    )
+
+    assert data["rate"] == "fast"
+    assert data["pitch"] == "low"
+    assert data["volume"] == "x-loud"
+
+
+def test_schema_normalizes_custom_prosody_values() -> None:
+    data = SEND_SCHEMA(
+        {
+            "target": "notify.office_echo_speak",
+            "text": "Hello.",
+            "rate": {"active_choice": "Enter %-age", "Enter %-age": 80.5},
+            "pitch": {"active_choice": "Enter %-age", "Enter %-age": 20},
+            "volume": {
+                "active_choice": "Enter dB adjustment",
+                "Enter dB adjustment": -3.0,
+            },
+        }
+    )
+
+    assert data["rate"] == "80.5%"
+    assert data["pitch"] == "+20%"
+    assert data["volume"] == "-3dB"
+    assert build_ssml(data) == (
+        '<prosody rate="80.5%" pitch="+20%" volume="-3dB">Hello.</prosody>'
+    )
+
+
+@pytest.mark.parametrize(
+    ("field", "choice", "value", "expected"),
+    [
+        ("rate", "Enter %-age", 20, "20%"),
+        ("rate", "Enter %-age", 200, "200%"),
+        ("pitch", "Enter %-age", -33.3, "-33.3%"),
+        ("pitch", "Enter %-age", 50, "+50%"),
+        ("volume", "Enter dB adjustment", -6, "-6dB"),
+        ("volume", "Enter dB adjustment", 6, "+6dB"),
+    ],
+)
+def test_schema_accepts_custom_prosody_boundaries(
+    field: str, choice: str, value: float, expected: str
+) -> None:
+    data = SEND_SCHEMA(
+        {
+            "target": "notify.office_echo_speak",
+            "text": "Hello.",
+            field: {"active_choice": choice, choice: value},
+        }
+    )
+
+    assert data[field] == expected
+
+
+@pytest.mark.parametrize(
+    ("field", "choice", "value"),
+    [
+        ("rate", "Enter %-age", 19.9),
+        ("rate", "Enter %-age", 200.1),
+        ("pitch", "Enter %-age", -33.4),
+        ("pitch", "Enter %-age", 50.1),
+        ("volume", "Enter dB adjustment", -6.1),
+        ("volume", "Enter dB adjustment", 6.1),
+    ],
+)
+def test_schema_rejects_custom_prosody_outside_bounds(
+    field: str, choice: str, value: float
+) -> None:
+    with pytest.raises(vol.Invalid):
+        SEND_SCHEMA(
+            {
+                "target": "notify.office_echo_speak",
+                "text": "Hello.",
+                field: {"active_choice": choice, choice: value},
+            }
+        )
+
+
+def test_schema_rejects_unselected_or_invalid_prosody_input() -> None:
+    for rate in (
+        "80%",
+        {"active_choice": "Named rate", "Named rate": "turbo"},
+        {"active_choice": "Enter %-age"},
+    ):
+        with pytest.raises(vol.Invalid):
+            SEND_SCHEMA(
+                {
+                    "target": "notify.office_echo_speak",
+                    "text": "Hello.",
+                    "rate": rate,
+                }
+            )
+
+
 def test_raw_ssml_bypasses_voice_wrapping() -> None:
     data = SEND_SCHEMA(
         {

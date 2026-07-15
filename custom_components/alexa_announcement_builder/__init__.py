@@ -3,7 +3,8 @@
 from __future__ import annotations
 
 import logging
-import re
+from collections.abc import Mapping
+from decimal import Decimal, InvalidOperation
 from typing import Any
 
 import voluptuous as vol
@@ -16,7 +17,6 @@ from .const import (
     ATTR_BREAK_BEFORE_MS,
     ATTR_EMOTION,
     ATTR_EMOTION_INTENSITY,
-    ATTR_MODE,
     ATTR_PITCH,
     ATTR_RATE,
     ATTR_RAW_SSML,
@@ -26,11 +26,9 @@ from .const import (
     ATTR_VOICE,
     ATTR_VOLUME,
     ATTR_WHISPER,
-    DEFAULT_MODE,
     DOMAIN,
     EMOTION_INTENSITIES,
     EMOTIONS,
-    MODES,
     PITCHES,
     RATES,
     SERVICE_SEND,
@@ -41,8 +39,13 @@ from .const import (
 from .ssml import build_ssml
 
 _LOGGER = logging.getLogger(__name__)
-_PERCENT_PATTERN = re.compile(r"^[1-9]\d*%$")
-_SIGNED_PERCENT_PATTERN = re.compile(r"^[+-](?:0|[1-9]\d*)%$")
+
+ACTIVE_CHOICE = "active_choice"
+NAMED_RATE_CHOICE = "Named rate"
+NAMED_PITCH_CHOICE = "Named pitch"
+NAMED_VOLUME_CHOICE = "Named volume"
+PERCENTAGE_CHOICE = "Enter %-age"
+DB_ADJUSTMENT_CHOICE = "Enter dB adjustment"
 
 
 def _notify_entity_id(value: Any) -> str:
@@ -53,20 +56,95 @@ def _notify_entity_id(value: Any) -> str:
     return entity_id
 
 
+def _format_number(value: Decimal) -> str:
+    """Format a decimal without exponent notation or unnecessary trailing zeros."""
+    formatted = format(value, "f")
+    if "." in formatted:
+        formatted = formatted.rstrip("0").rstrip(".")
+    return formatted
+
+
+def _prosody_value(
+    value: Any,
+    *,
+    named_choice: str,
+    named_values: tuple[str, ...],
+    custom_choice: str,
+    minimum: Decimal,
+    maximum: Decimal,
+    suffix: str,
+    signed: bool,
+) -> str:
+    """Validate and normalize a Home Assistant choose-selector value."""
+    if not isinstance(value, Mapping):
+        raise vol.Invalid("prosody value must come from its named or numeric selector")
+
+    active_choice = value.get(ACTIVE_CHOICE)
+    if active_choice == named_choice:
+        selected = value.get(named_choice)
+        if selected not in named_values:
+            raise vol.Invalid(f"unsupported {named_choice.lower()}")
+        return str(selected)
+
+    if active_choice != custom_choice:
+        raise vol.Invalid(f"select either {named_choice} or {custom_choice}")
+
+    selected = value.get(custom_choice)
+    if isinstance(selected, bool) or selected is None:
+        raise vol.Invalid(f"{custom_choice} requires a number")
+    try:
+        number = Decimal(str(selected))
+    except (InvalidOperation, ValueError):
+        raise vol.Invalid(f"{custom_choice} requires a number") from None
+    if not number.is_finite() or not minimum <= number <= maximum:
+        raise vol.Invalid(f"{custom_choice} must be between {minimum} and {maximum}")
+
+    formatted = _format_number(number)
+    if signed and number >= 0:
+        formatted = f"+{formatted}"
+    return f"{formatted}{suffix}"
+
+
 def _rate(value: Any) -> str:
-    """Validate an Alexa prosody rate."""
-    value = cv.string(value)
-    if value not in RATES and not _PERCENT_PATTERN.fullmatch(value):
-        raise vol.Invalid("rate must be a named rate or a positive percentage")
-    return value
+    """Validate an Alexa prosody rate selector."""
+    return _prosody_value(
+        value,
+        named_choice=NAMED_RATE_CHOICE,
+        named_values=RATES,
+        custom_choice=PERCENTAGE_CHOICE,
+        minimum=Decimal("20"),
+        maximum=Decimal("200"),
+        suffix="%",
+        signed=False,
+    )
 
 
 def _pitch(value: Any) -> str:
-    """Validate an Alexa prosody pitch."""
-    value = cv.string(value)
-    if value not in PITCHES and not _SIGNED_PERCENT_PATTERN.fullmatch(value):
-        raise vol.Invalid("pitch must be a named pitch or a signed percentage")
-    return value
+    """Validate an Alexa prosody pitch selector."""
+    return _prosody_value(
+        value,
+        named_choice=NAMED_PITCH_CHOICE,
+        named_values=PITCHES,
+        custom_choice=PERCENTAGE_CHOICE,
+        minimum=Decimal("-33.3"),
+        maximum=Decimal("50"),
+        suffix="%",
+        signed=True,
+    )
+
+
+def _volume(value: Any) -> str:
+    """Validate an Alexa prosody volume selector."""
+    return _prosody_value(
+        value,
+        named_choice=NAMED_VOLUME_CHOICE,
+        named_values=VOLUMES,
+        custom_choice=DB_ADJUSTMENT_CHOICE,
+        minimum=Decimal("-6"),
+        maximum=Decimal("6"),
+        suffix="dB",
+        signed=True,
+    )
 
 
 def _validate_message(data: dict[str, Any]) -> dict[str, Any]:
@@ -81,11 +159,10 @@ SEND_SCHEMA = vol.All(
         {
             vol.Required(ATTR_TARGET): _notify_entity_id,
             vol.Optional(ATTR_TEXT): cv.string,
-            vol.Optional(ATTR_MODE, default=DEFAULT_MODE): vol.In(MODES),
             vol.Optional(ATTR_VOICE): vol.In(VOICE_CHOICES),
             vol.Optional(ATTR_RATE): _rate,
             vol.Optional(ATTR_PITCH): _pitch,
-            vol.Optional(ATTR_VOLUME): vol.In(VOLUMES),
+            vol.Optional(ATTR_VOLUME): _volume,
             vol.Optional(ATTR_WHISPER, default=False): cv.boolean,
             vol.Optional(ATTR_EMOTION): vol.In(EMOTIONS),
             vol.Optional(ATTR_EMOTION_INTENSITY): vol.In(EMOTION_INTENSITIES),

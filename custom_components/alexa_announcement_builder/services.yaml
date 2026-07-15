@@ -17,15 +17,6 @@ send:
       selector:
         text:
           multiline: true
-    mode:
-      name: Mode
-      description: Descriptive mode; the target notify entity determines actual behavior.
-      default: speak
-      selector:
-        select:
-          options:
-            - speak
-            - announce
     voice:
       name: Voice
       description: Select the Alexa default behavior or a named Amazon Polly voice.
@@ -116,28 +107,77 @@ send:
               value: Mia
     rate:
       name: Rate
-      description: Named rate or a positive percentage.
-      example: x-slow
+      description: Select a named rate or enter a percentage from 20 to 200.
       selector:
-        text:
+        choose:
+          choices:
+            Named rate:
+              selector:
+                select:
+                  mode: dropdown
+                  options:
+                    - x-slow
+                    - slow
+                    - medium
+                    - fast
+                    - x-fast
+            Enter %-age:
+              selector:
+                number:
+                  min: 20
+                  max: 200
+                  step: any
+                  unit_of_measurement: "%"
+                  mode: box
     pitch:
       name: Pitch
-      description: Named pitch or a signed percentage.
-      example: +20%
+      description: Select a named pitch or enter a percentage from -33.3 to 50.
       selector:
-        text:
+        choose:
+          choices:
+            Named pitch:
+              selector:
+                select:
+                  mode: dropdown
+                  options:
+                    - x-low
+                    - low
+                    - medium
+                    - high
+                    - x-high
+            Enter %-age:
+              selector:
+                number:
+                  min: -33.3
+                  max: 50
+                  step: any
+                  unit_of_measurement: "%"
+                  mode: box
     volume:
       name: Volume
-      description: Alexa prosody volume.
+      description: Select a named volume or enter a dB adjustment from -6 to 6.
       selector:
-        select:
-          options:
-            - silent
-            - x-soft
-            - soft
-            - medium
-            - loud
-            - x-loud
+        choose:
+          choices:
+            Named volume:
+              selector:
+                select:
+                  mode: dropdown
+                  options:
+                    - silent
+                    - x-soft
+                    - soft
+                    - medium
+                    - loud
+                    - x-loud
+            Enter dB adjustment:
+              selector:
+                number:
+                  min: -6
+                  max: 6
+                  step: any
+                  unit_of_measurement: dB
+                  mode: box
     whisper:
       name: Whisper
       description: Apply the Alexa whispered speech effect.
