@@ -12,250 +12,257 @@ send:
           filter:
             - integration: alexa_devices
               domain: notify
-    text:
-      name: Text
-      description: Plain text to escape and convert to SSML. Required unless a sound or raw SSML is supplied.
-      example: The garage door is still open.
-      selector:
-        text:
-          multiline: true
-    sound:
-      name: Sound
-      description: Select a common Alexa sound or enter an HTTPS MP3, sound-library URI, or copied audio tag. Cannot be combined with text or raw SSML.
+    content:
+      name: Content
+      description: Choose exactly one content type. Message includes voice and speech options; Sound requires a Speak target; Raw SSML is sent unchanged.
+      required: true
       selector:
         choose:
           choices:
-            Common sound:
+            Message:
               selector:
-                select:
-                  mode: dropdown
-                  options:
-                    - label: Doorbell chime
-                      value: doorbell_chime
-                    - label: Door knock
-                      value: door_knock
-                    - label: Applause
-                      value: applause
-                    - label: Positive response
-                      value: positive_response
-                    - label: Negative response
-                      value: negative_response
-                    - label: Game show intro
-                      value: game_show_intro
-                    - label: Alarm buzzer
-                      value: alarm_buzzer
-                    - label: Dog bark
-                      value: dog_bark
-                    - label: Cat meow
-                      value: cat_meow
-                    - label: Rooster crow
-                      value: rooster_crow
-                    - label: Thunder
-                      value: thunder
-                    - label: Fire extinguisher
-                      value: fire_extinguisher
-            Custom sound:
+                object:
+                  fields:
+                    text:
+                      label: Text
+                      required: true
+                      selector:
+                        text:
+                          multiline: true
+                    voice:
+                      label: Voice
+                      selector:
+                        select:
+                          mode: dropdown
+                          options:
+                            - label: Alexa+ default voice
+                              value: alexa_plus
+                            - label: Original Alexa default voice
+                              value: original_alexa
+                            - label: Ivy — English, American (en-US)
+                              value: Ivy
+                            - label: Joanna — English, American (en-US)
+                              value: Joanna
+                            - label: Joey — English, American (en-US)
+                              value: Joey
+                            - label: Justin — English, American (en-US)
+                              value: Justin
+                            - label: Kendra — English, American (en-US)
+                              value: Kendra
+                            - label: Kimberly — English, American (en-US)
+                              value: Kimberly
+                            - label: Matthew — English, American (en-US)
+                              value: Matthew
+                            - label: Salli — English, American (en-US)
+                              value: Salli
+                            - label: Nicole — English, Australian (en-AU)
+                              value: Nicole
+                            - label: Russell — English, Australian (en-AU)
+                              value: Russell
+                            - label: Amy — English, British (en-GB)
+                              value: Amy
+                            - label: Brian — English, British (en-GB)
+                              value: Brian
+                            - label: Emma — English, British (en-GB)
+                              value: Emma
+                            - label: Aditi — English, Indian / Hindi (en-IN, hi-IN)
+                              value: Aditi
+                            - label: Raveena — English, Indian (en-IN)
+                              value: Raveena
+                            - label: Geraint — English, Welsh (en-GB-WLS)
+                              value: Geraint
+                            - label: Chantal — French, Canadian (fr-CA)
+                              value: Chantal
+                            - label: Celine — French, France (fr-FR)
+                              value: Celine
+                            - label: Lea — French, France (fr-FR)
+                              value: Lea
+                            - label: Mathieu — French, France (fr-FR)
+                              value: Mathieu
+                            - label: Hans — German (de-DE)
+                              value: Hans
+                            - label: Marlene — German (de-DE)
+                              value: Marlene
+                            - label: Vicki — German (de-DE)
+                              value: Vicki
+                            - label: Carla — Italian (it-IT)
+                              value: Carla
+                            - label: Giorgio — Italian (it-IT)
+                              value: Giorgio
+                            - label: Bianca — Italian (it-IT)
+                              value: Bianca
+                            - label: Mizuki — Japanese (ja-JP)
+                              value: Mizuki
+                            - label: Takumi — Japanese (ja-JP)
+                              value: Takumi
+                            - label: Vitoria — Portuguese, Brazilian (pt-BR)
+                              value: Vitoria
+                            - label: Camila — Portuguese, Brazilian (pt-BR)
+                              value: Camila
+                            - label: Ricardo — Portuguese, Brazilian (pt-BR)
+                              value: Ricardo
+                            - label: Penelope — Spanish, American (es-US)
+                              value: Penelope
+                            - label: Lupe — Spanish, American (es-US)
+                              value: Lupe
+                            - label: Miguel — Spanish, American (es-US)
+                              value: Miguel
+                            - label: Conchita — Spanish, Castilian (es-ES)
+                              value: Conchita
+                            - label: Enrique — Spanish, Castilian (es-ES)
+                              value: Enrique
+                            - label: Lucia — Spanish, Castilian (es-ES)
+                              value: Lucia
+                            - label: Mia — Spanish, Mexican (es-MX)
+                              value: Mia
+                    rate:
+                      label: Rate
+                      selector:
+                        choose:
+                          choices:
+                            Named rate:
+                              selector:
+                                select:
+                                  mode: dropdown
+                                  options:
+                                    - x-slow
+                                    - slow
+                                    - medium
+                                    - fast
+                                    - x-fast
+                            Enter %-age:
+                              selector:
+                                number:
+                                  min: 20
+                                  max: 200
+                                  step: any
+                                  unit_of_measurement: "%"
+                                  mode: box
+                    pitch:
+                      label: Pitch
+                      selector:
+                        choose:
+                          choices:
+                            Named pitch:
+                              selector:
+                                select:
+                                  mode: dropdown
+                                  options:
+                                    - x-low
+                                    - low
+                                    - medium
+                                    - high
+                                    - x-high
+                            Enter %-age:
+                              selector:
+                                number:
+                                  min: -33.3
+                                  max: 50
+                                  step: any
+                                  unit_of_measurement: "%"
+                                  mode: box
+                    volume:
+                      label: Volume
+                      selector:
+                        choose:
+                          choices:
+                            Named volume:
+                              selector:
+                                select:
+                                  mode: dropdown
+                                  options:
+                                    - silent
+                                    - x-soft
+                                    - soft
+                                    - medium
+                                    - loud
+                                    - x-loud
+                            Enter dB adjustment:
+                              selector:
+                                number:
+                                  min: -6
+                                  max: 6
+                                  step: any
+                                  unit_of_measurement: dB
+                                  mode: box
+                    whisper:
+                      label: Whisper
+                      selector:
+                        boolean:
+                    emotion:
+                      label: Emotion
+                      selector:
+                        select:
+                          options:
+                            - excited
+                            - disappointed
+                    emotion_intensity:
+                      label: Emotion intensity
+                      selector:
+                        select:
+                          options:
+                            - low
+                            - medium
+                            - high
+                    domain:
+                      label: Speech domain
+                      selector:
+                        select:
+                          options:
+                            - music
+                            - news
+                            - conversational
+                            - long-form
+            Sound:
+              selector:
+                object:
+                  fields:
+                    source:
+                      label: Sound
+                      required: true
+                      selector:
+                        choose:
+                          choices:
+                            Common sound:
+                              selector:
+                                select:
+                                  mode: dropdown
+                                  options:
+                                    - label: Doorbell chime
+                                      value: doorbell_chime
+                                    - label: Door knock
+                                      value: door_knock
+                                    - label: Applause
+                                      value: applause
+                                    - label: Positive response
+                                      value: positive_response
+                                    - label: Negative response
+                                      value: negative_response
+                                    - label: Game show intro
+                                      value: game_show_intro
+                                    - label: Alarm buzzer
+                                      value: alarm_buzzer
+                                    - label: Dog bark
+                                      value: dog_bark
+                                    - label: Cat meow
+                                      value: cat_meow
+                                    - label: Rooster crow
+                                      value: rooster_crow
+                                    - label: Thunder
+                                      value: thunder
+                                    - label: Fire extinguisher
+                                      value: fire_extinguisher
+                            Custom sound:
+                              selector:
+                                text:
+                                  multiline: false
+            Raw SSML:
               selector:
                 text:
-                  multiline: false
-    voice:
-      name: Voice
-      description: Select the Alexa default behavior or a named Amazon Polly voice.
-      default: alexa_plus
-      selector:
-        select:
-          mode: dropdown
-          options:
-            - label: Alexa+ default voice
-              value: alexa_plus
-            - label: Original Alexa default voice
-              value: original_alexa
-            - label: Ivy — English, American (en-US)
-              value: Ivy
-            - label: Joanna — English, American (en-US)
-              value: Joanna
-            - label: Joey — English, American (en-US)
-              value: Joey
-            - label: Justin — English, American (en-US)
-              value: Justin
-            - label: Kendra — English, American (en-US)
-              value: Kendra
-            - label: Kimberly — English, American (en-US)
-              value: Kimberly
-            - label: Matthew — English, American (en-US)
-              value: Matthew
-            - label: Salli — English, American (en-US)
-              value: Salli
-            - label: Nicole — English, Australian (en-AU)
-              value: Nicole
-            - label: Russell — English, Australian (en-AU)
-              value: Russell
-            - label: Amy — English, British (en-GB)
-              value: Amy
-            - label: Brian — English, British (en-GB)
-              value: Brian
-            - label: Emma — English, British (en-GB)
-              value: Emma
-            - label: Aditi — English, Indian / Hindi (en-IN, hi-IN)
-              value: Aditi
-            - label: Raveena — English, Indian (en-IN)
-              value: Raveena
-            - label: Geraint — English, Welsh (en-GB-WLS)
-              value: Geraint
-            - label: Chantal — French, Canadian (fr-CA)
-              value: Chantal
-            - label: Celine — French, France (fr-FR)
-              value: Celine
-            - label: Lea — French, France (fr-FR)
-              value: Lea
-            - label: Mathieu — French, France (fr-FR)
-              value: Mathieu
-            - label: Hans — German (de-DE)
-              value: Hans
-            - label: Marlene — German (de-DE)
-              value: Marlene
-            - label: Vicki — German (de-DE)
-              value: Vicki
-            - label: Carla — Italian (it-IT)
-              value: Carla
-            - label: Giorgio — Italian (it-IT)
-              value: Giorgio
-            - label: Bianca — Italian (it-IT)
-              value: Bianca
-            - label: Mizuki — Japanese (ja-JP)
-              value: Mizuki
-            - label: Takumi — Japanese (ja-JP)
-              value: Takumi
-            - label: Vitoria — Portuguese, Brazilian (pt-BR)
-              value: Vitoria
-            - label: Camila — Portuguese, Brazilian (pt-BR)
-              value: Camila
-            - label: Ricardo — Portuguese, Brazilian (pt-BR)
-              value: Ricardo
-            - label: Penelope — Spanish, American (es-US)
-              value: Penelope
-            - label: Lupe — Spanish, American (es-US)
-              value: Lupe
-            - label: Miguel — Spanish, American (es-US)
-              value: Miguel
-            - label: Conchita — Spanish, Castilian (es-ES)
-              value: Conchita
-            - label: Enrique — Spanish, Castilian (es-ES)
-              value: Enrique
-            - label: Lucia — Spanish, Castilian (es-ES)
-              value: Lucia
-            - label: Mia — Spanish, Mexican (es-MX)
-              value: Mia
-    rate:
-      name: Rate
-      description: Select a named rate or enter a percentage from 20 to 200.
-      selector:
-        choose:
-          choices:
-            Named rate:
-              selector:
-                select:
-                  mode: dropdown
-                  options:
-                    - x-slow
-                    - slow
-                    - medium
-                    - fast
-                    - x-fast
-            Enter %-age:
-              selector:
-                number:
-                  min: 20
-                  max: 200
-                  step: any
-                  unit_of_measurement: "%"
-                  mode: box
-    pitch:
-      name: Pitch
-      description: Select a named pitch or enter a percentage from -33.3 to 50.
-      selector:
-        choose:
-          choices:
-            Named pitch:
-              selector:
-                select:
-                  mode: dropdown
-                  options:
-                    - x-low
-                    - low
-                    - medium
-                    - high
-                    - x-high
-            Enter %-age:
-              selector:
-                number:
-                  min: -33.3
-                  max: 50
-                  step: any
-                  unit_of_measurement: "%"
-                  mode: box
-    volume:
-      name: Volume
-      description: Select a named volume or enter a dB adjustment from -6 to 6.
-      selector:
-        choose:
-          choices:
-            Named volume:
-              selector:
-                select:
-                  mode: dropdown
-                  options:
-                    - silent
-                    - x-soft
-                    - soft
-                    - medium
-                    - loud
-                    - x-loud
-            Enter dB adjustment:
-              selector:
-                number:
-                  min: -6
-                  max: 6
-                  step: any
-                  unit_of_measurement: dB
-                  mode: box
-    whisper:
-      name: Whisper
-      description: Apply the Alexa whispered speech effect.
-      default: false
-      selector:
-        boolean:
-    emotion:
-      name: Emotion
-      description: Alexa emotion to apply.
-      selector:
-        select:
-          options:
-            - excited
-            - disappointed
-    emotion_intensity:
-      name: Emotion intensity
-      description: Intensity used when an emotion is selected.
-      default: medium
-      selector:
-        select:
-          options:
-            - low
-            - medium
-            - high
-    domain:
-      name: Speech domain
-      description: Alexa speech style domain.
-      selector:
-        select:
-          options:
-            - music
-            - news
-            - conversational
-            - long-form
+                  multiline: true
     break_before_ms:
       name: Break before
-      description: Silent break before speech, in milliseconds.
+      description: Silent break before a generated message or sound, in milliseconds. Ignored for Raw SSML.
       selector:
         number:
           min: 0
@@ -264,16 +271,10 @@ send:
           mode: box
     break_after_ms:
       name: Break after
-      description: Silent break after speech, in milliseconds.
+      description: Silent break after a generated message or sound, in milliseconds. Ignored for Raw SSML.
       selector:
         number:
           min: 0
           max: 10000
           unit_of_measurement: ms
           mode: box
-    raw_ssml:
-      name: Raw SSML
-      description: Trusted SSML contents to send unchanged instead of generated speech.
-      selector:
-        text:
-          multiline: true

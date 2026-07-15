@@ -43,18 +43,27 @@ Tools and automations.
 action: alexa_announcement_builder.send
 data:
   target: notify.office_echo_speak
-  text: "The garage door is still open."
-  voice: original_alexa
-  rate:
-    active_choice: Named rate
-    Named rate: x-slow
-  volume:
-    active_choice: Named volume
-    Named volume: loud
+  content:
+    active_choice: Message
+    Message:
+      text: "The garage door is still open."
+      voice: original_alexa
+      rate:
+        active_choice: Named rate
+        Named rate: x-slow
+      volume:
+        active_choice: Named volume
+        Named volume: loud
 ```
 
 The selected notify entity decides whether Alexa speaks or announces the
 message. Choose the corresponding `_speak` or `_announce` entity as the target.
+Sound content must use a `_speak` entity because the Alexa Devices Announce path
+plays its announcement chime but does not play embedded audio markup.
+
+The **Content** chooser exposes exactly one of **Message**, **Sound**, or
+**Raw SSML**. Voice and speech-effect controls are part of Message, so they are
+not shown for Sound or Raw SSML.
 
 Rate, pitch, and volume each offer a named-value dropdown and a bounded custom
 number box. Home Assistant stores the selected option as a `choose` value. For
@@ -62,15 +71,19 @@ example, a custom 80% rate, +20% pitch, and -3 dB volume adjustment are written
 as:
 
 ```yaml
-rate:
-  active_choice: Enter %-age
-  Enter %-age: 80
-pitch:
-  active_choice: Enter %-age
-  Enter %-age: 20
-volume:
-  active_choice: Enter dB adjustment
-  Enter dB adjustment: -3
+content:
+  active_choice: Message
+  Message:
+    text: "Example message."
+    rate:
+      active_choice: Enter %-age
+      Enter %-age: 80
+    pitch:
+      active_choice: Enter %-age
+      Enter %-age: 20
+    volume:
+      active_choice: Enter dB adjustment
+      Enter dB adjustment: -3
 ```
 
 Custom rate values are limited to 20 through 200, pitch values to -33.3 through
@@ -78,16 +91,19 @@ Custom rate values are limited to 20 through 200, pitch values to -33.3 through
 
 ## Sound selection
 
-The `sound` selector can send one sound instead of a spoken message. Choose a
-curated Alexa sound from the **Common sound** dropdown:
+Choose **Sound** as the content type, then select a curated Alexa sound from the
+**Common sound** dropdown:
 
 ```yaml
 action: alexa_announcement_builder.send
 data:
   target: notify.office_echo_speak
-  sound:
-    active_choice: Common sound
-    Common sound: doorbell_chime
+  content:
+    active_choice: Sound
+    Sound:
+      source:
+        active_choice: Common sound
+        Common sound: doorbell_chime
 ```
 
 The **Custom sound** input accepts any of these forms:
@@ -103,9 +119,12 @@ For example:
 action: alexa_announcement_builder.send
 data:
   target: notify.office_echo_speak
-  sound:
-    active_choice: Custom sound
-    Custom sound: '<audio src="soundbank://soundlibrary/air/fire_extinguisher/fire_extinguisher_04"/>'
+  content:
+    active_choice: Sound
+    Sound:
+      source:
+        active_choice: Custom sound
+        Custom sound: '<audio src="soundbank://soundlibrary/air/fire_extinguisher/fire_extinguisher_04"/>'
 ```
 
 Copied tags are parsed and rebuilt rather than passed through as trusted
@@ -114,9 +133,10 @@ certificate and must meet Amazon's MP3 encoding, sample-rate, bit-rate, and
 duration requirements. The integration validates the URL format but does not
 download or inspect the remote file.
 
-In this version, `sound` sends one standalone sound and cannot be combined with
-`text` or `raw_ssml` in the same action. Voice and speech-effect fields are
-ignored for a sound; optional before/after breaks still apply.
+Sound sends one standalone sound. The Content chooser prevents combining it
+with a message, Raw SSML, voice, or speech effects. Optional before/after breaks
+still apply. Selecting an Announce target with Sound is rejected with a clear
+validation error; select the matching Speak target instead.
 
 ## Voice selection
 
@@ -139,13 +159,16 @@ Example with a named voice:
 action: alexa_announcement_builder.send
 data:
   target: notify.kitchen_echo_speak
-  text: "Dinner is ready."
-  voice: Joanna
-  rate:
-    active_choice: Named rate
-    Named rate: slow
-  emotion: excited
-  emotion_intensity: medium
+  content:
+    active_choice: Message
+    Message:
+      text: "Dinner is ready."
+      voice: Joanna
+      rate:
+        active_choice: Named rate
+        Named rate: slow
+      emotion: excited
+      emotion_intensity: medium
 ```
 
 Example announcement automation:
@@ -161,12 +184,15 @@ actions:
   - action: alexa_announcement_builder.send
     data:
       target: notify.office_echo_announce
-      text: "The garage door has been open for ten minutes."
-      voice: original_alexa
+      content:
+        active_choice: Message
+        Message:
+          text: "The garage door has been open for ten minutes."
+          voice: original_alexa
+          volume:
+            active_choice: Named volume
+            Named volume: loud
       break_before_ms: 250
-      volume:
-        active_choice: Named volume
-        Named volume: loud
 mode: single
 ```
 
@@ -176,12 +202,16 @@ For trusted, hand-authored markup, `raw_ssml` bypasses generation and escaping:
 action: alexa_announcement_builder.send
 data:
   target: notify.office_echo_speak
-  raw_ssml: '<prosody rate="slow">This markup is sent unchanged.</prosody>'
+  content:
+    active_choice: Raw SSML
+    Raw SSML: '<prosody rate="slow">This markup is sent unchanged.</prosody>'
 ```
 
-Plain `text` is XML-escaped automatically. `raw_ssml` is deliberately not
-escaped or validated and must not contain outer `<speak>` tags. Supply at least
-one of `text`, `sound`, or `raw_ssml`.
+Message text is XML-escaped automatically. Raw SSML is deliberately not escaped
+or validated and must not contain outer `<speak>` tags. Older YAML using the
+separate `text`, `sound`, and `raw_ssml` fields remains accepted, but it must
+provide exactly one content type and cannot attach message options to Sound or
+Raw SSML.
 
 ## Alexa SSML caveats
 

@@ -85,7 +85,7 @@ def test_xml_escaping() -> None:
 
 def test_raw_ssml_passthrough() -> None:
     raw = '<amazon:effect name="whispered">A & B</amazon:effect>'
-    assert build_ssml({"raw_ssml": raw, "voice": "original_alexa"}) == raw
+    assert build_ssml({"raw_ssml": raw}) == raw
 
 
 def test_common_sound() -> None:
@@ -103,6 +103,74 @@ def test_common_sound() -> None:
     assert build_ssml(data) == (
         '<audio src="soundbank://soundlibrary/home/amzn_sfx_doorbell_chime_01"/>'
     )
+
+
+def test_content_message_flattens_only_the_active_choice() -> None:
+    data = SEND_SCHEMA(
+        {
+            "target": "notify.office_echo_speak",
+            "content": {
+                "active_choice": "Message",
+                "Message": {"text": "Hello.", "voice": "Joanna"},
+                "Sound": {
+                    "source": {
+                        "active_choice": "Common sound",
+                        "Common sound": "doorbell_chime",
+                    },
+                },
+                "Raw SSML": '<break time="5s"/>',
+            },
+        }
+    )
+
+    assert data == {
+        "target": "notify.office_echo_speak",
+        "text": "Hello.",
+        "voice": "Joanna",
+    }
+    assert build_ssml(data) == '<voice name="Joanna">Hello.</voice>'
+
+
+def test_content_raw_ssml_flattens_only_the_active_choice() -> None:
+    data = SEND_SCHEMA(
+        {
+            "target": "notify.office_echo_speak",
+            "content": {
+                "active_choice": "Raw SSML",
+                "Message": {"text": "Ignore me.", "voice": "Joanna"},
+                "Raw SSML": '<break time="1s"/>',
+            },
+        }
+    )
+
+    assert data == {
+        "target": "notify.office_echo_speak",
+        "raw_ssml": '<break time="1s"/>',
+    }
+    assert build_ssml(data) == '<break time="1s"/>'
+
+
+def test_content_sound_flattens_only_the_active_choice() -> None:
+    data = SEND_SCHEMA(
+        {
+            "target": "notify.office_echo_speak",
+            "content": {
+                "active_choice": "Sound",
+                "Message": {"text": "Ignore me.", "voice": "Joanna"},
+                "Sound": {
+                    "source": {
+                        "active_choice": "Common sound",
+                        "Common sound": "doorbell_chime",
+                    },
+                },
+            },
+        }
+    )
+
+    assert data == {
+        "target": "notify.office_echo_speak",
+        "sound": COMMON_SOUNDS["doorbell_chime"],
+    }
 
 
 @pytest.mark.parametrize("source", COMMON_SOUNDS.values())
@@ -147,17 +215,19 @@ def test_custom_sound_sources(supplied: str, expected: str) -> None:
     assert build_ssml(data) == (f'<audio src="{expected.replace("&", "&amp;")}"/>')
 
 
-def test_sound_keeps_breaks_and_ignores_speech_options() -> None:
+def test_sound_keeps_breaks() -> None:
     data = SEND_SCHEMA(
         {
             "target": "notify.office_echo_speak",
-            "sound": {
-                "active_choice": "Common sound",
-                "Common sound": "applause",
+            "content": {
+                "active_choice": "Sound",
+                "Sound": {
+                    "source": {
+                        "active_choice": "Common sound",
+                        "Common sound": "applause",
+                    },
+                },
             },
-            "voice": "original_alexa",
-            "rate": {"active_choice": "Named rate", "Named rate": "fast"},
-            "whisper": True,
             "break_before_ms": 100,
             "break_after_ms": 250,
         }
@@ -383,15 +453,90 @@ def test_schema_rejects_unselected_or_invalid_prosody_input() -> None:
             )
 
 
-def test_raw_ssml_bypasses_voice_wrapping() -> None:
-    data = SEND_SCHEMA(
-        {
-            "target": "notify.office_echo_speak",
-            "raw_ssml": '<break time="1s"/>',
-            "voice": "Joanna",
-        }
-    )
-    assert build_ssml(data) == '<break time="1s"/>'
+def test_schema_rejects_raw_ssml_with_voice() -> None:
+    with pytest.raises(vol.Invalid):
+        SEND_SCHEMA(
+            {
+                "target": "notify.office_echo_speak",
+                "raw_ssml": '<break time="1s"/>',
+                "voice": "Joanna",
+            }
+        )
+
+
+def test_schema_rejects_message_and_raw_ssml_together() -> None:
+    with pytest.raises(vol.Invalid):
+        SEND_SCHEMA(
+            {
+                "target": "notify.office_echo_speak",
+                "text": "Hello.",
+                "raw_ssml": '<break time="1s"/>',
+            }
+        )
+
+
+def test_schema_rejects_sound_with_message_options() -> None:
+    with pytest.raises(vol.Invalid):
+        SEND_SCHEMA(
+            {
+                "target": "notify.office_echo_speak",
+                "sound": {
+                    "active_choice": "Common sound",
+                    "Common sound": "doorbell_chime",
+                },
+                "voice": "Joanna",
+            }
+        )
+
+
+@pytest.mark.parametrize(
+    "target", ["notify.office_echo_announce", "notify.office_echo_announce_2"]
+)
+def test_schema_rejects_sound_sent_to_announce_target(target: str) -> None:
+    with pytest.raises(vol.Invalid, match="Speak target"):
+        SEND_SCHEMA(
+            {
+                "target": target,
+                "content": {
+                    "active_choice": "Sound",
+                    "Sound": {
+                        "source": {
+                            "active_choice": "Common sound",
+                            "Common sound": "doorbell_chime",
+                        },
+                    },
+                },
+            }
+        )
+
+
+def test_schema_rejects_content_selector_mixed_with_legacy_fields() -> None:
+    with pytest.raises(vol.Invalid, match="legacy fields"):
+        SEND_SCHEMA(
+            {
+                "target": "notify.office_echo_speak",
+                "content": {
+                    "active_choice": "Message",
+                    "Message": {"text": "New message."},
+                },
+                "text": "Legacy message.",
+            }
+        )
+
+
+@pytest.mark.parametrize(
+    "content",
+    [
+        "Message",
+        {"active_choice": "Message"},
+        {"active_choice": "Message", "Message": {"text": "  "}},
+        {"active_choice": "Raw SSML", "Raw SSML": ""},
+        {"active_choice": "Unsupported"},
+    ],
+)
+def test_schema_rejects_invalid_content_selector(content: object) -> None:
+    with pytest.raises(vol.Invalid):
+        SEND_SCHEMA({"target": "notify.office_echo_speak", "content": content})
 
 
 @pytest.mark.parametrize("target", ["light.office", "not an entity"])

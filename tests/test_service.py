@@ -34,11 +34,16 @@ async def test_service_forwards_to_notify_send_message() -> None:
     data = SEND_SCHEMA(
         {
             "target": "notify.office_echo_speak",
-            "text": "This is a test.",
-            "voice": "original_alexa",
-            "rate": {
-                "active_choice": "Named rate",
-                "Named rate": "x-slow",
+            "content": {
+                "active_choice": "Message",
+                "Message": {
+                    "text": "This is a test.",
+                    "voice": "original_alexa",
+                    "rate": {
+                        "active_choice": "Named rate",
+                        "Named rate": "x-slow",
+                    },
+                },
             },
         }
     )
@@ -65,9 +70,14 @@ async def test_service_forwards_selected_sound_to_notify() -> None:
     data = SEND_SCHEMA(
         {
             "target": "notify.office_echo_speak",
-            "sound": {
-                "active_choice": "Common sound",
-                "Common sound": "positive_response",
+            "content": {
+                "active_choice": "Sound",
+                "Sound": {
+                    "source": {
+                        "active_choice": "Common sound",
+                        "Common sound": "positive_response",
+                    },
+                },
             },
         }
     )
