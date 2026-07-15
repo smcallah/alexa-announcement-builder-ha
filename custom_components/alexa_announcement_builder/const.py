@@ -24,7 +24,7 @@ DEFAULT_EMOTION_INTENSITY = "medium"
 
 COMMON_SOUNDS = {
     "doorbell_chime": "soundbank://soundlibrary/home/amzn_sfx_doorbell_chime_01",
-    "door_knock": "soundbank://soundlibrary/home/amzn_sfx_door_knock_01",
+    "door_knock": "soundbank://soundlibrary/doors/doors_knocks/knocks_01",
     "applause": "soundbank://soundlibrary/human/amzn_sfx_crowd_applause_01",
     "positive_response": (
         "soundbank://soundlibrary/ui/gameshow/amzn_ui_sfx_gameshow_positive_response_01"
