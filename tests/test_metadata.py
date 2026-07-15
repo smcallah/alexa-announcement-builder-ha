@@ -152,3 +152,11 @@ def test_sequence_selector_is_repeatable_and_not_nested() -> None:
     assert fields["text"]["selector"] == {"text": {"multiline": True}}
     assert fields["raw_ssml"]["selector"] == {"text": {"multiline": True}}
     assert all("object" not in field["selector"] for field in fields.values())
+
+
+def test_object_selector_fields_use_home_assistant_supported_keys() -> None:
+    metadata = yaml.safe_load((INTEGRATION / "services.yaml").read_text("utf-8"))
+    _, fields = _sequence_fields(metadata)
+
+    supported_keys = {"label", "required", "selector"}
+    assert all(set(field) <= supported_keys for field in fields.values())
