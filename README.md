@@ -45,7 +45,7 @@ data:
   target: notify.office_echo_speak
   text: "The garage door is still open."
   mode: speak
-  voice_mode: original_alexa
+  voice: original_alexa
   rate: x-slow
   volume: loud
 ```
@@ -53,17 +53,20 @@ data:
 `mode` is descriptive in this first release. The selected notify entity decides
 whether Alexa speaks or announces the message.
 
-## Voice modes
+## Voice selection
 
-- `alexa_plus` leaves the generated speech outside a voice tag, allowing the
-  current default Alexa voice to handle it.
-- `original_alexa` inserts `<voice name="Kendra"> </voice>` before the speech.
-  The single space is intentional and works around Alexa+ taking over speech on
-  devices where the behavior has been observed.
-- `named_voice` wraps the speech in an Amazon Polly voice tag. Set `voice_name`
-  from the dropdown of Alexa-supported Polly voices. Each option shows its
-  locale; voices from a different locale may pronounce the supplied text
-  differently.
+The `voice` dropdown puts both Alexa defaults first, followed by every supported
+named Polly voice:
+
+- **Alexa+ default voice** (`alexa_plus`) leaves the generated speech outside a
+  voice tag, allowing the current default Alexa voice to handle it.
+- **Original Alexa default voice** (`original_alexa`) inserts
+  `<voice name="Kendra"> </voice>` before the speech. The single space is
+  intentional and works around Alexa+ taking over speech on devices where the
+  behavior has been observed.
+- A named voice such as `Joanna` wraps the speech in the corresponding Amazon
+  Polly voice tag. Each option shows its locale; voices from a different locale
+  may pronounce the supplied text differently.
 
 Example with a named voice:
 
@@ -72,8 +75,7 @@ action: alexa_announcement_builder.send
 data:
   target: notify.kitchen_echo_speak
   text: "Dinner is ready."
-  voice_mode: named_voice
-  voice_name: Joanna
+  voice: Joanna
   rate: slow
   emotion: excited
   emotion_intensity: medium
@@ -94,7 +96,7 @@ actions:
       target: notify.office_echo_announce
       text: "The garage door has been open for ten minutes."
       mode: announce
-      voice_mode: original_alexa
+      voice: original_alexa
       break_before_ms: 250
       volume: loud
 mode: single

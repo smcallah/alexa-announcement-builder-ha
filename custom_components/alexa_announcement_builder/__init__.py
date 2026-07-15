@@ -23,22 +23,19 @@ from .const import (
     ATTR_SPEECH_DOMAIN,
     ATTR_TARGET,
     ATTR_TEXT,
-    ATTR_VOICE_MODE,
-    ATTR_VOICE_NAME,
+    ATTR_VOICE,
     ATTR_VOLUME,
     ATTR_WHISPER,
     DEFAULT_MODE,
-    DEFAULT_VOICE_MODE,
     DOMAIN,
     EMOTION_INTENSITIES,
     EMOTIONS,
     MODES,
-    NAMED_VOICES,
     PITCHES,
     RATES,
     SERVICE_SEND,
     SPEECH_DOMAINS,
-    VOICE_MODES,
+    VOICE_CHOICES,
     VOLUMES,
 )
 from .ssml import build_ssml
@@ -76,12 +73,6 @@ def _validate_message(data: dict[str, Any]) -> dict[str, Any]:
     """Validate conditional message and voice fields."""
     if not data.get(ATTR_TEXT) and not data.get(ATTR_RAW_SSML):
         raise vol.Invalid("one of text or raw_ssml is required")
-    if data.get(ATTR_RAW_SSML):
-        return data
-    if data[ATTR_VOICE_MODE] == "named_voice" and not data.get(ATTR_VOICE_NAME):
-        raise vol.Invalid("voice_name is required when voice_mode is named_voice")
-    if data[ATTR_VOICE_MODE] != "named_voice" and ATTR_VOICE_NAME in data:
-        raise vol.Invalid("voice_name is only valid when voice_mode is named_voice")
     return data
 
 
@@ -91,10 +82,7 @@ SEND_SCHEMA = vol.All(
             vol.Required(ATTR_TARGET): _notify_entity_id,
             vol.Optional(ATTR_TEXT): cv.string,
             vol.Optional(ATTR_MODE, default=DEFAULT_MODE): vol.In(MODES),
-            vol.Optional(ATTR_VOICE_MODE, default=DEFAULT_VOICE_MODE): vol.In(
-                VOICE_MODES
-            ),
-            vol.Optional(ATTR_VOICE_NAME): vol.In(NAMED_VOICES),
+            vol.Optional(ATTR_VOICE): vol.In(VOICE_CHOICES),
             vol.Optional(ATTR_RATE): _rate,
             vol.Optional(ATTR_PITCH): _pitch,
             vol.Optional(ATTR_VOLUME): vol.In(VOLUMES),

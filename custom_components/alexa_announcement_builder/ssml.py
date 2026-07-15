@@ -16,12 +16,12 @@ from .const import (
     ATTR_RAW_SSML,
     ATTR_SPEECH_DOMAIN,
     ATTR_TEXT,
-    ATTR_VOICE_MODE,
-    ATTR_VOICE_NAME,
+    ATTR_VOICE,
     ATTR_VOLUME,
     ATTR_WHISPER,
     DEFAULT_EMOTION_INTENSITY,
-    DEFAULT_VOICE_MODE,
+    DEFAULT_VOICE,
+    NAMED_VOICES,
     ORIGINAL_ALEXA_PREFIX,
 )
 
@@ -53,16 +53,16 @@ def build_ssml(data: Mapping[str, Any]) -> str:
     if speech_domain := data.get(ATTR_SPEECH_DOMAIN):
         body = f'<amazon:domain name="{speech_domain}">{body}</amazon:domain>'
 
-    voice_mode = data.get(ATTR_VOICE_MODE, DEFAULT_VOICE_MODE)
-    if voice_mode == "named_voice":
-        voice_name = escape(str(data[ATTR_VOICE_NAME]), quote=True)
-        body = f'<voice name="{voice_name}">{body}</voice>'
+    voice = data.get(ATTR_VOICE, DEFAULT_VOICE)
+    if voice in NAMED_VOICES:
+        escaped_voice_name = escape(str(voice), quote=True)
+        body = f'<voice name="{escaped_voice_name}">{body}</voice>'
 
     parts = []
     if ATTR_BREAK_BEFORE_MS in data:
         break_before = data[ATTR_BREAK_BEFORE_MS]
         parts.append(f'<break time="{break_before}ms"/>')
-    if voice_mode == "original_alexa":
+    if voice == "original_alexa":
         parts.append(ORIGINAL_ALEXA_PREFIX)
     parts.append(body)
     if ATTR_BREAK_AFTER_MS in data:

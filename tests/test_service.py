@@ -35,7 +35,7 @@ async def test_service_forwards_to_notify_send_message() -> None:
         {
             "target": "notify.office_echo_speak",
             "text": "This is a test.",
-            "voice_mode": "original_alexa",
+            "voice": "original_alexa",
             "rate": "x-slow",
         }
     )
