@@ -44,14 +44,37 @@ action: alexa_announcement_builder.send
 data:
   target: notify.office_echo_speak
   text: "The garage door is still open."
-  mode: speak
   voice: original_alexa
-  rate: x-slow
-  volume: loud
+  rate:
+    active_choice: Named rate
+    Named rate: x-slow
+  volume:
+    active_choice: Named volume
+    Named volume: loud
 ```
 
-`mode` is descriptive in this first release. The selected notify entity decides
-whether Alexa speaks or announces the message.
+The selected notify entity decides whether Alexa speaks or announces the
+message. Choose the corresponding `_speak` or `_announce` entity as the target.
+
+Rate, pitch, and volume each offer a named-value dropdown and a bounded custom
+number box. Home Assistant stores the selected option as a `choose` value. For
+example, a custom 80% rate, +20% pitch, and -3 dB volume adjustment are written
+as:
+
+```yaml
+rate:
+  active_choice: Enter %-age
+  Enter %-age: 80
+pitch:
+  active_choice: Enter %-age
+  Enter %-age: 20
+volume:
+  active_choice: Enter dB adjustment
+  Enter dB adjustment: -3
+```
+
+Custom rate values are limited to 20 through 200, pitch values to -33.3 through
+50, and volume adjustments to -6 through 6 dB.
 
 ## Voice selection
 
@@ -76,7 +99,9 @@ data:
   target: notify.kitchen_echo_speak
   text: "Dinner is ready."
   voice: Joanna
-  rate: slow
+  rate:
+    active_choice: Named rate
+    Named rate: slow
   emotion: excited
   emotion_intensity: medium
 ```
@@ -95,10 +120,11 @@ actions:
     data:
       target: notify.office_echo_announce
       text: "The garage door has been open for ten minutes."
-      mode: announce
       voice: original_alexa
       break_before_ms: 250
-      volume: loud
+      volume:
+        active_choice: Named volume
+        Named volume: loud
 mode: single
 ```
 

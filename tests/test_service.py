@@ -36,7 +36,10 @@ async def test_service_forwards_to_notify_send_message() -> None:
             "target": "notify.office_echo_speak",
             "text": "This is a test.",
             "voice": "original_alexa",
-            "rate": "x-slow",
+            "rate": {
+                "active_choice": "Named rate",
+                "Named rate": "x-slow",
+            },
         }
     )
     await handler(SimpleNamespace(data=data))

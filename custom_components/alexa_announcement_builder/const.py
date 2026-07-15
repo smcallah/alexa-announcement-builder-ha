@@ -5,7 +5,6 @@ SERVICE_SEND = "send"
 
 ATTR_TARGET = "target"
 ATTR_TEXT = "text"
-ATTR_MODE = "mode"
 ATTR_VOICE = "voice"
 ATTR_RATE = "rate"
 ATTR_PITCH = "pitch"
@@ -18,11 +17,9 @@ ATTR_BREAK_BEFORE_MS = "break_before_ms"
 ATTR_BREAK_AFTER_MS = "break_after_ms"
 ATTR_RAW_SSML = "raw_ssml"
 
-DEFAULT_MODE = "speak"
 DEFAULT_VOICE = "alexa_plus"
 DEFAULT_EMOTION_INTENSITY = "medium"
 
-MODES = ("speak", "announce")
 NAMED_VOICES = (
     "Ivy",
     "Joanna",

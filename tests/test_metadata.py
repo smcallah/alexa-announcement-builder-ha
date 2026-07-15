@@ -32,7 +32,6 @@ def test_service_metadata_describes_all_schema_fields() -> None:
     assert set(fields) == {
         "target",
         "text",
-        "mode",
         "voice",
         "rate",
         "pitch",
@@ -58,3 +57,32 @@ def test_voice_selector_lists_every_supported_voice() -> None:
         *NAMED_VOICES,
     )
     assert all("(" in option["label"] for option in selector["options"][2:])
+
+
+def test_prosody_selectors_offer_named_and_bounded_custom_values() -> None:
+    metadata = yaml.safe_load((INTEGRATION / "services.yaml").read_text("utf-8"))
+    fields = metadata["send"]["fields"]
+
+    expected = {
+        "rate": ("Named rate", "Enter %-age", 20, 200, "%"),
+        "pitch": ("Named pitch", "Enter %-age", -33.3, 50, "%"),
+        "volume": (
+            "Named volume",
+            "Enter dB adjustment",
+            -6,
+            6,
+            "dB",
+        ),
+    }
+    for field, (named, custom, minimum, maximum, unit) in expected.items():
+        choices = fields[field]["selector"]["choose"]["choices"]
+        assert tuple(choices) == (named, custom)
+        assert choices[named]["selector"]["select"]["mode"] == "dropdown"
+        number = choices[custom]["selector"]["number"]
+        assert number == {
+            "min": minimum,
+            "max": maximum,
+            "step": "any",
+            "unit_of_measurement": unit,
+            "mode": "box",
+        }
