@@ -57,7 +57,6 @@ CUSTOM_SOUND_CHOICE = "Custom sound"
 MESSAGE_CHOICE = "Message"
 SOUND_CHOICE = "Sound"
 RAW_SSML_CHOICE = "Raw SSML"
-SOUND_SOURCE_FIELD = "source"
 
 
 def _notify_entity_id(value: Any) -> str:
@@ -178,6 +177,15 @@ def _sound(value: Any) -> str:
     return normalize_sound_source(value.get(CUSTOM_SOUND_CHOICE))
 
 
+def _content_sound(value: Any) -> str:
+    """Validate a preset key or custom source from the content sound selector."""
+    if not isinstance(value, str):
+        raise vol.Invalid("Sound requires a common sound or custom source")
+    if value in COMMON_SOUNDS:
+        return COMMON_SOUNDS[value]
+    return normalize_sound_source(value)
+
+
 def _required_text(value: Any, field_name: str) -> str:
     """Validate a required, non-empty text value."""
     text = cv.string(value)
@@ -205,10 +213,6 @@ MESSAGE_SCHEMA = vol.Schema(
     },
     extra=vol.PREVENT_EXTRA,
 )
-SOUND_CONTENT_SCHEMA = vol.Schema(
-    {vol.Required(SOUND_SOURCE_FIELD): _sound},
-    extra=vol.PREVENT_EXTRA,
-)
 
 
 def _content(value: Any) -> dict[str, Any]:
@@ -223,11 +227,7 @@ def _content(value: Any) -> dict[str, Any]:
             raise vol.Invalid("Message requires message options")
         return dict(MESSAGE_SCHEMA(message))
     if active_choice == SOUND_CHOICE:
-        sound = value.get(SOUND_CHOICE)
-        if not isinstance(sound, Mapping):
-            raise vol.Invalid("Sound requires a sound source")
-        validated = SOUND_CONTENT_SCHEMA(sound)
-        return {ATTR_SOUND: validated[SOUND_SOURCE_FIELD]}
+        return {ATTR_SOUND: _content_sound(value.get(SOUND_CHOICE))}
     if active_choice == RAW_SSML_CHOICE:
         return {
             ATTR_RAW_SSML: _required_text(value.get(RAW_SSML_CHOICE), ATTR_RAW_SSML)

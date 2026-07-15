@@ -73,24 +73,17 @@ def test_target_selector_only_lists_alexa_device_notify_entities() -> None:
     }
 
 
-def test_sound_selector_offers_curated_and_custom_sources() -> None:
+def test_sound_selector_offers_labeled_presets_and_custom_values() -> None:
     metadata = yaml.safe_load((INTEGRATION / "services.yaml").read_text("utf-8"))
     content_choices = metadata["send"]["fields"]["content"]["selector"]["choose"][
         "choices"
     ]
-    sound_fields = content_choices["Sound"]["selector"]["object"]["fields"]
-    assert tuple(sound_fields) == ("source",)
-    assert sound_fields["source"]["required"] is True
-    choices = sound_fields["source"]["selector"]["choose"]["choices"]
+    sound = content_choices["Sound"]["selector"]["select"]
 
-    assert tuple(choices) == ("Common sound", "Custom sound")
-    common = choices["Common sound"]["selector"]["select"]
-    assert common["mode"] == "dropdown"
-    assert tuple(option["value"] for option in common["options"]) == tuple(
-        COMMON_SOUNDS
-    )
-    assert all(option["label"] for option in common["options"])
-    assert choices["Custom sound"]["selector"] == {"text": {"multiline": False}}
+    assert sound["mode"] == "dropdown"
+    assert sound["custom_value"] is True
+    assert tuple(option["value"] for option in sound["options"]) == tuple(COMMON_SOUNDS)
+    assert all(option["label"] for option in sound["options"])
 
 
 def test_prosody_selectors_offer_named_and_bounded_custom_values() -> None:
@@ -134,7 +127,7 @@ def test_content_selector_makes_content_and_message_options_exclusive() -> None:
     assert tuple(choices) == ("Message", "Sound", "Raw SSML")
     assert tuple(next(iter(choice["selector"])) for choice in choices.values()) == (
         "object",
-        "object",
+        "select",
         "text",
     )
     message_fields = choices["Message"]["selector"]["object"]["fields"]

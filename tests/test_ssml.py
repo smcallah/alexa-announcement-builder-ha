@@ -112,12 +112,7 @@ def test_content_message_flattens_only_the_active_choice() -> None:
             "content": {
                 "active_choice": "Message",
                 "Message": {"text": "Hello.", "voice": "Joanna"},
-                "Sound": {
-                    "source": {
-                        "active_choice": "Common sound",
-                        "Common sound": "doorbell_chime",
-                    },
-                },
+                "Sound": "doorbell_chime",
                 "Raw SSML": '<break time="5s"/>',
             },
         }
@@ -157,12 +152,7 @@ def test_content_sound_flattens_only_the_active_choice() -> None:
             "content": {
                 "active_choice": "Sound",
                 "Message": {"text": "Ignore me.", "voice": "Joanna"},
-                "Sound": {
-                    "source": {
-                        "active_choice": "Common sound",
-                        "Common sound": "doorbell_chime",
-                    },
-                },
+                "Sound": "doorbell_chime",
             },
         }
     )
@@ -170,6 +160,42 @@ def test_content_sound_flattens_only_the_active_choice() -> None:
     assert data == {
         "target": "notify.office_echo_speak",
         "sound": COMMON_SOUNDS["doorbell_chime"],
+    }
+
+
+@pytest.mark.parametrize(
+    ("supplied", "expected"),
+    [
+        (
+            "soundbank://soundlibrary/air/fire_extinguisher/fire_extinguisher_04",
+            "soundbank://soundlibrary/air/fire_extinguisher/fire_extinguisher_04",
+        ),
+        (
+            "https://audio.example.test/chime.mp3",
+            "https://audio.example.test/chime.mp3",
+        ),
+        (
+            '<audio src="soundbank://soundlibrary/home/amzn_sfx_door_knock_01"/>',
+            "soundbank://soundlibrary/home/amzn_sfx_door_knock_01",
+        ),
+    ],
+)
+def test_content_sound_accepts_a_custom_source_as_one_scalar_value(
+    supplied: str, expected: str
+) -> None:
+    data = SEND_SCHEMA(
+        {
+            "target": "notify.office_echo_speak",
+            "content": {
+                "active_choice": "Sound",
+                "Sound": supplied,
+            },
+        }
+    )
+
+    assert data == {
+        "target": "notify.office_echo_speak",
+        "sound": expected,
     }
 
 
@@ -221,12 +247,7 @@ def test_sound_keeps_breaks() -> None:
             "target": "notify.office_echo_speak",
             "content": {
                 "active_choice": "Sound",
-                "Sound": {
-                    "source": {
-                        "active_choice": "Common sound",
-                        "Common sound": "applause",
-                    },
-                },
+                "Sound": "applause",
             },
             "break_before_ms": 100,
             "break_after_ms": 250,
@@ -499,12 +520,7 @@ def test_schema_rejects_sound_sent_to_announce_target(target: str) -> None:
                 "target": target,
                 "content": {
                     "active_choice": "Sound",
-                    "Sound": {
-                        "source": {
-                            "active_choice": "Common sound",
-                            "Common sound": "doorbell_chime",
-                        },
-                    },
+                    "Sound": "doorbell_chime",
                 },
             }
         )

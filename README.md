@@ -92,7 +92,7 @@ Custom rate values are limited to 20 through 200, pitch values to -33.3 through
 ## Sound selection
 
 Choose **Sound** as the content type, then select a curated Alexa sound from the
-**Common sound** dropdown:
+dropdown:
 
 ```yaml
 action: alexa_announcement_builder.send
@@ -100,13 +100,10 @@ data:
   target: notify.office_echo_speak
   content:
     active_choice: Sound
-    Sound:
-      source:
-        active_choice: Common sound
-        Common sound: doorbell_chime
+    Sound: doorbell_chime
 ```
 
-The **Custom sound** input accepts any of these forms:
+The Sound dropdown also accepts a custom value in any of these forms:
 
 - A public HTTPS URL for an Alexa-compatible MP3.
 - An Alexa sound-library URI beginning with
@@ -121,10 +118,7 @@ data:
   target: notify.office_echo_speak
   content:
     active_choice: Sound
-    Sound:
-      source:
-        active_choice: Custom sound
-        Custom sound: '<audio src="soundbank://soundlibrary/air/fire_extinguisher/fire_extinguisher_04"/>'
+    Sound: '<audio src="soundbank://soundlibrary/air/fire_extinguisher/fire_extinguisher_04"/>'
 ```
 
 Copied tags are parsed and rebuilt rather than passed through as trusted
@@ -133,10 +127,12 @@ certificate and must meet Amazon's MP3 encoding, sample-rate, bit-rate, and
 duration requirements. The integration validates the URL format but does not
 download or inspect the remote file.
 
-Sound sends one standalone sound. The Content chooser prevents combining it
-with a message, Raw SSML, voice, or speech effects. Optional before/after breaks
-still apply. Selecting an Announce target with Sound is rejected with a clear
-validation error; select the matching Speak target instead.
+Sound sends one standalone sound. A preset name or custom URI is stored as one
+value, so changing between them replaces the previous selection instead of
+combining both. The Content chooser prevents combining Sound with a message,
+Raw SSML, voice, or speech effects. Optional before/after breaks still apply.
+Selecting an Announce target with Sound is rejected with a clear validation
+error; select the matching Speak target instead.
 
 ## Voice selection
 
