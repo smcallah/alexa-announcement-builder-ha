@@ -90,6 +90,55 @@ async def test_service_forwards_selected_sound_to_notify() -> None:
     )
 
 
+async def test_service_forwards_ordered_sequence_to_notify() -> None:
+    services = SimpleNamespace(async_register=Mock(), async_call=AsyncMock())
+    hass = SimpleNamespace(services=services)
+    await async_setup(hass, {})
+    handler = services.async_register.call_args.args[2]
+
+    data = SEND_SCHEMA(
+        {
+            "target": "notify.office_echo_speak",
+            "sequence": [
+                {
+                    "content": {
+                        "active_choice": "Message",
+                        "Message": {"text": "Someone is at the door."},
+                    }
+                },
+                {
+                    "content": {
+                        "active_choice": "Sound",
+                        "Sound": "door_knock",
+                    }
+                },
+                {
+                    "content": {
+                        "active_choice": "Message",
+                        "Message": {
+                            "text": "Please check the camera.",
+                            "voice": "Joanna",
+                        },
+                    }
+                },
+            ],
+        }
+    )
+    await handler(SimpleNamespace(data=data))
+
+    services.async_call.assert_awaited_once_with(
+        "notify",
+        "send_message",
+        {
+            "message": "Someone is at the door."
+            '<audio src="soundbank://soundlibrary/doors/doors_knocks/knocks_01"/>'
+            '<voice name="Joanna">Please check the camera.</voice>'
+        },
+        target={"entity_id": "notify.office_echo_speak"},
+        blocking=True,
+    )
+
+
 async def test_forwarding_error_propagates() -> None:
     services = SimpleNamespace(
         async_register=Mock(), async_call=AsyncMock(side_effect=RuntimeError("failed"))

@@ -14,6 +14,12 @@ ROOT = Path(__file__).parents[1]
 INTEGRATION = ROOT / "custom_components" / "alexa_announcement_builder"
 
 
+def _sequence_content_choices(metadata: dict) -> tuple[dict, dict]:
+    sequence = metadata["send"]["fields"]["sequence"]
+    content = sequence["selector"]["object"]["fields"]["content"]
+    return sequence, content["selector"]["choose"]["choices"]
+
+
 def test_json_metadata_is_valid() -> None:
     for path in (INTEGRATION / "manifest.json", INTEGRATION / "strings.json"):
         assert json.loads(path.read_text(encoding="utf-8"))
@@ -34,7 +40,7 @@ def test_service_metadata_describes_all_schema_fields() -> None:
     fields = metadata["send"]["fields"]
     assert set(fields) == {
         "target",
-        "content",
+        "sequence",
         "break_before_ms",
         "break_after_ms",
     }
@@ -51,7 +57,7 @@ def test_service_translations_cover_every_field() -> None:
 
 def test_voice_selector_lists_every_supported_voice() -> None:
     metadata = yaml.safe_load((INTEGRATION / "services.yaml").read_text("utf-8"))
-    choices = metadata["send"]["fields"]["content"]["selector"]["choose"]["choices"]
+    _, choices = _sequence_content_choices(metadata)
     message_fields = choices["Message"]["selector"]["object"]["fields"]
     selector = message_fields["voice"]["selector"]["select"]
 
@@ -75,9 +81,7 @@ def test_target_selector_only_lists_alexa_device_notify_entities() -> None:
 
 def test_sound_selector_offers_labeled_presets_and_custom_values() -> None:
     metadata = yaml.safe_load((INTEGRATION / "services.yaml").read_text("utf-8"))
-    content_choices = metadata["send"]["fields"]["content"]["selector"]["choose"][
-        "choices"
-    ]
+    _, content_choices = _sequence_content_choices(metadata)
     sound = content_choices["Sound"]["selector"]["select"]
 
     assert sound["mode"] == "dropdown"
@@ -88,9 +92,7 @@ def test_sound_selector_offers_labeled_presets_and_custom_values() -> None:
 
 def test_prosody_selectors_offer_named_and_bounded_custom_values() -> None:
     metadata = yaml.safe_load((INTEGRATION / "services.yaml").read_text("utf-8"))
-    content_choices = metadata["send"]["fields"]["content"]["selector"]["choose"][
-        "choices"
-    ]
+    _, content_choices = _sequence_content_choices(metadata)
     fields = content_choices["Message"]["selector"]["object"]["fields"]
 
     expected = {
@@ -118,11 +120,15 @@ def test_prosody_selectors_offer_named_and_bounded_custom_values() -> None:
         }
 
 
-def test_content_selector_makes_content_and_message_options_exclusive() -> None:
+def test_sequence_selector_is_repeatable_and_content_options_are_exclusive() -> None:
     metadata = yaml.safe_load((INTEGRATION / "services.yaml").read_text("utf-8"))
-    content = metadata["send"]["fields"]["content"]
-    choices = content["selector"]["choose"]["choices"]
+    sequence, choices = _sequence_content_choices(metadata)
+    object_selector = sequence["selector"]["object"]
+    content = object_selector["fields"]["content"]
 
+    assert sequence["required"] is True
+    assert object_selector["multiple"] is True
+    assert tuple(object_selector["fields"]) == ("content",)
     assert content["required"] is True
     assert tuple(choices) == ("Message", "Sound", "Raw SSML")
     assert tuple(next(iter(choice["selector"])) for choice in choices.values()) == (
