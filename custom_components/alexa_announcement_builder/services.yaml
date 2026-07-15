@@ -14,11 +14,50 @@ send:
               domain: notify
     text:
       name: Text
-      description: Plain text to escape and convert to SSML. Required unless raw SSML is supplied.
+      description: Plain text to escape and convert to SSML. Required unless a sound or raw SSML is supplied.
       example: The garage door is still open.
       selector:
         text:
           multiline: true
+    sound:
+      name: Sound
+      description: Select a common Alexa sound or enter an HTTPS MP3, sound-library URI, or copied audio tag. Cannot be combined with text or raw SSML.
+      selector:
+        choose:
+          choices:
+            Common sound:
+              selector:
+                select:
+                  mode: dropdown
+                  options:
+                    - label: Doorbell chime
+                      value: doorbell_chime
+                    - label: Door knock
+                      value: door_knock
+                    - label: Applause
+                      value: applause
+                    - label: Positive response
+                      value: positive_response
+                    - label: Negative response
+                      value: negative_response
+                    - label: Game show intro
+                      value: game_show_intro
+                    - label: Alarm buzzer
+                      value: alarm_buzzer
+                    - label: Dog bark
+                      value: dog_bark
+                    - label: Cat meow
+                      value: cat_meow
+                    - label: Rooster crow
+                      value: rooster_crow
+                    - label: Thunder
+                      value: thunder
+                    - label: Fire extinguisher
+                      value: fire_extinguisher
+            Custom sound:
+              selector:
+                text:
+                  multiline: false
     voice:
       name: Voice
       description: Select the Alexa default behavior or a named Amazon Polly voice.

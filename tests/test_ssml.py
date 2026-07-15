@@ -4,6 +4,8 @@ import pytest
 import voluptuous as vol
 
 from custom_components.alexa_announcement_builder import SEND_SCHEMA
+from custom_components.alexa_announcement_builder.const import COMMON_SOUNDS
+from custom_components.alexa_announcement_builder.sound import normalize_sound_source
 from custom_components.alexa_announcement_builder.ssml import build_ssml
 
 
@@ -84,6 +86,159 @@ def test_xml_escaping() -> None:
 def test_raw_ssml_passthrough() -> None:
     raw = '<amazon:effect name="whispered">A & B</amazon:effect>'
     assert build_ssml({"raw_ssml": raw, "voice": "original_alexa"}) == raw
+
+
+def test_common_sound() -> None:
+    data = SEND_SCHEMA(
+        {
+            "target": "notify.office_echo_speak",
+            "sound": {
+                "active_choice": "Common sound",
+                "Common sound": "doorbell_chime",
+            },
+        }
+    )
+
+    assert data["sound"] == COMMON_SOUNDS["doorbell_chime"]
+    assert build_ssml(data) == (
+        '<audio src="soundbank://soundlibrary/home/amzn_sfx_doorbell_chime_01"/>'
+    )
+
+
+@pytest.mark.parametrize("source", COMMON_SOUNDS.values())
+def test_every_common_sound_source_is_valid(source: str) -> None:
+    assert normalize_sound_source(source) == source
+
+
+@pytest.mark.parametrize(
+    ("supplied", "expected"),
+    [
+        (
+            "soundbank://soundlibrary/air/fire_extinguisher/fire_extinguisher_04",
+            "soundbank://soundlibrary/air/fire_extinguisher/fire_extinguisher_04",
+        ),
+        (
+            '<audio src="soundbank://soundlibrary/air/fire_extinguisher/'
+            'fire_extinguisher_04"/>',
+            "soundbank://soundlibrary/air/fire_extinguisher/fire_extinguisher_04",
+        ),
+        (
+            "<audio src='https://audio.example.test/chime.mp3?token=a&amp;b=2'/>",
+            "https://audio.example.test/chime.mp3?token=a&b=2",
+        ),
+        (
+            "  https://audio.example.test/chime.mp3?token=a&b=2  ",
+            "https://audio.example.test/chime.mp3?token=a&b=2",
+        ),
+    ],
+)
+def test_custom_sound_sources(supplied: str, expected: str) -> None:
+    data = SEND_SCHEMA(
+        {
+            "target": "notify.office_echo_speak",
+            "sound": {
+                "active_choice": "Custom sound",
+                "Custom sound": supplied,
+            },
+        }
+    )
+
+    assert data["sound"] == expected
+    assert build_ssml(data) == (f'<audio src="{expected.replace("&", "&amp;")}"/>')
+
+
+def test_sound_keeps_breaks_and_ignores_speech_options() -> None:
+    data = SEND_SCHEMA(
+        {
+            "target": "notify.office_echo_speak",
+            "sound": {
+                "active_choice": "Common sound",
+                "Common sound": "applause",
+            },
+            "voice": "original_alexa",
+            "rate": {"active_choice": "Named rate", "Named rate": "fast"},
+            "whisper": True,
+            "break_before_ms": 100,
+            "break_after_ms": 250,
+        }
+    )
+
+    assert build_ssml(data) == (
+        '<break time="100ms"/>'
+        '<audio src="soundbank://soundlibrary/human/amzn_sfx_crowd_applause_01"/>'
+        '<break time="250ms"/>'
+    )
+
+
+@pytest.mark.parametrize(
+    "supplied",
+    [
+        "",
+        "http://audio.example.test/chime.mp3",
+        "audio.example.test/chime.mp3",
+        "https://user:secret@audio.example.test/chime.mp3",
+        "https://audio.example.test/chime.mp3#fragment",
+        "https://audio.example.test:invalid/chime.mp3",
+        "https://audio.example.test/chime file.mp3",
+        "soundbank://example.test/animals/bird_01",
+        "soundbank://soundlibrary/",
+        "soundbank://soundlibrary/animals/../bird_01",
+        "soundbank://soundlibrary/animals//bird_01",
+        "soundbank://soundlibrary/animals/./bird_01",
+        "soundbank://soundlibrary/animals/bird_01?variant=2",
+        "<audio/>",
+        '<audio src="https://audio.example.test/chime.mp3" loop="1"/>',
+        '<audio src="https://audio.example.test/chime.mp3">text</audio>',
+        '<audio src="https://audio.example.test/chime.mp3"></audio>',
+        '<speak><audio src="https://audio.example.test/chime.mp3"/></speak>',
+        "x" * 2049,
+        f'<audio src="https://audio.example.test/{"x" * 5000}.mp3"/>',
+        None,
+    ],
+)
+def test_schema_rejects_invalid_custom_sound(supplied: object) -> None:
+    with pytest.raises(vol.Invalid):
+        SEND_SCHEMA(
+            {
+                "target": "notify.office_echo_speak",
+                "sound": {
+                    "active_choice": "Custom sound",
+                    "Custom sound": supplied,
+                },
+            }
+        )
+
+
+@pytest.mark.parametrize(
+    "sound",
+    [
+        "doorbell_chime",
+        {"active_choice": "Common sound", "Common sound": "unknown"},
+        {"active_choice": "Common sound", "Common sound": []},
+        {"active_choice": "Custom sound"},
+        {"active_choice": "Unsupported choice"},
+    ],
+)
+def test_schema_rejects_invalid_sound_selector(sound: object) -> None:
+    with pytest.raises(vol.Invalid):
+        SEND_SCHEMA({"target": "notify.office_echo_speak", "sound": sound})
+
+
+@pytest.mark.parametrize("other_field", ["text", "raw_ssml"])
+def test_schema_rejects_sound_combined_with_message_content(
+    other_field: str,
+) -> None:
+    with pytest.raises(vol.Invalid):
+        SEND_SCHEMA(
+            {
+                "target": "notify.office_echo_speak",
+                "sound": {
+                    "active_choice": "Common sound",
+                    "Common sound": "doorbell_chime",
+                },
+                other_field: "Hello.",
+            }
+        )
 
 
 def test_all_wrappers_follow_documented_order() -> None:
