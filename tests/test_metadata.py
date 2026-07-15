@@ -59,6 +59,15 @@ def test_voice_selector_lists_every_supported_voice() -> None:
     assert all("(" in option["label"] for option in selector["options"][2:])
 
 
+def test_target_selector_only_lists_alexa_device_notify_entities() -> None:
+    metadata = yaml.safe_load((INTEGRATION / "services.yaml").read_text("utf-8"))
+    selector = metadata["send"]["fields"]["target"]["selector"]["entity"]
+
+    assert selector == {
+        "filter": [{"integration": "alexa_devices", "domain": "notify"}]
+    }
+
+
 def test_prosody_selectors_offer_named_and_bounded_custom_values() -> None:
     metadata = yaml.safe_load((INTEGRATION / "services.yaml").read_text("utf-8"))
     fields = metadata["send"]["fields"]

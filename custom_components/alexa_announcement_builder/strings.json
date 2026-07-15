@@ -15,7 +15,7 @@
       "name": "Send Alexa announcement",
       "description": "Build Alexa SSML and send it through a notify entity.",
       "fields": {
-        "target": { "name": "Target", "description": "Alexa Devices notify entity that will receive the SSML." },
+        "target": { "name": "Target", "description": "Alexa Devices Speak or Announce notify entity that will receive the SSML." },
         "text": { "name": "Text", "description": "Plain text to escape and convert to SSML." },
         "voice": { "name": "Voice", "description": "Select the Alexa default behavior or a named Amazon Polly voice." },
         "rate": { "name": "Rate", "description": "Select a named rate or enter a percentage from 20 to 200." },
