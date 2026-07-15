@@ -72,12 +72,7 @@ async def test_service_forwards_selected_sound_to_notify() -> None:
             "target": "notify.office_echo_speak",
             "content": {
                 "active_choice": "Sound",
-                "Sound": {
-                    "source": {
-                        "active_choice": "Common sound",
-                        "Common sound": "positive_response",
-                    },
-                },
+                "Sound": "positive_response",
             },
         }
     )
