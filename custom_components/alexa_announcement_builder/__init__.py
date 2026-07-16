@@ -36,6 +36,7 @@ from .const import (
     DOMAIN,
     EMOTION_INTENSITIES,
     EMOTIONS,
+    MAX_AUDIO_CLIPS_PER_MESSAGE,
     PITCHES,
     RATES,
     SERVICE_SEND,
@@ -48,6 +49,7 @@ from .ssml import build_ssml
 
 _LOGGER = logging.getLogger(__name__)
 _ANNOUNCE_ENTITY_ID = re.compile(r"_announce(?:_\d+)?$")
+_AUDIO_TAG = re.compile(r"<audio(?=\s|/?>)", re.IGNORECASE)
 
 ACTIVE_CHOICE = "active_choice"
 NAMED_RATE_CHOICE = "Named rate"
@@ -196,7 +198,10 @@ def _content_sound(value: Any) -> str:
 
 def _required_text(value: Any, field_name: str) -> str:
     """Validate a required, non-empty text value."""
-    text = cv.string(value)
+    try:
+        text = cv.string(value)
+    except vol.Invalid:
+        raise vol.Invalid(f"{field_name} is required") from None
     if not text.strip():
         raise vol.Invalid(f"{field_name} cannot be empty")
     return text
@@ -295,6 +300,8 @@ def _flat_sequence_item(value: Mapping[str, Any]) -> dict[str, Any]:
 
     content_type = value.get(ATTR_CONTENT_TYPE)
     if content_type == MESSAGE_CHOICE:
+        if not isinstance(value.get(ATTR_TEXT), str) or not value[ATTR_TEXT].strip():
+            raise vol.Invalid("Message requires non-empty message text")
         message = {
             field: field_value
             for field, field_value in value.items()
@@ -302,12 +309,18 @@ def _flat_sequence_item(value: Mapping[str, Any]) -> dict[str, Any]:
         }
         return dict(MESSAGE_SCHEMA(message))
     if content_type == SOUND_CHOICE:
+        if not value.get(ATTR_SOUND):
+            raise vol.Invalid("Sound requires a sound selection or custom source")
         return {ATTR_SOUND: _content_sound(value.get(ATTR_SOUND))}
     if content_type == RAW_SSML_CHOICE:
+        if (
+            not isinstance(value.get(ATTR_RAW_SSML), str)
+            or not value[ATTR_RAW_SSML].strip()
+        ):
+            raise vol.Invalid("Raw SSML requires non-empty markup")
         return {ATTR_RAW_SSML: _required_text(value.get(ATTR_RAW_SSML), ATTR_RAW_SSML)}
     raise vol.Invalid(
-        f"select {MESSAGE_CHOICE}, {SOUND_CHOICE}, or {RAW_SSML_CHOICE} "
-        "as the content type"
+        f"choose Content type: {MESSAGE_CHOICE}, {SOUND_CHOICE}, or {RAW_SSML_CHOICE}"
     )
 
 
@@ -331,6 +344,24 @@ _MESSAGE_ONLY_FIELDS = _LEGACY_CONTENT_FIELDS - {
 }
 
 
+def _validate_audio_clip_limit(data: Mapping[str, Any]) -> None:
+    """Reject payloads that exceed Amazon's audio-clip limit."""
+    items = data.get(ATTR_SEQUENCE)
+    if not isinstance(items, list):
+        items = [data]
+
+    audio_clips = sum(
+        bool(item.get(ATTR_SOUND))
+        + len(_AUDIO_TAG.findall(item.get(ATTR_RAW_SSML, "")))
+        for item in items
+    )
+    if audio_clips > MAX_AUDIO_CLIPS_PER_MESSAGE:
+        raise vol.Invalid(
+            f"Alexa accepts at most {MAX_AUDIO_CLIPS_PER_MESSAGE} audio clips per "
+            f"message; this request contains {audio_clips}"
+        )
+
+
 def _normalize_and_validate_content(data: dict[str, Any]) -> dict[str, Any]:
     """Flatten new content data and validate legacy YAML combinations."""
     if ATTR_SEQUENCE in data:
@@ -340,6 +371,7 @@ def _normalize_and_validate_content(data: dict[str, Any]) -> dict[str, Any]:
             raise vol.Invalid(
                 f"sequence cannot be combined with single-content fields: {names}"
             )
+        _validate_audio_clip_limit(data)
         if _ANNOUNCE_ENTITY_ID.search(data[ATTR_TARGET]) and any(
             item.get(ATTR_SOUND) for item in data[ATTR_SEQUENCE]
         ):
@@ -377,6 +409,7 @@ def _normalize_and_validate_content(data: dict[str, Any]) -> dict[str, Any]:
             "Sound requires an Alexa Devices Speak target; Announce targets only "
             "play the announcement chime"
         )
+    _validate_audio_clip_limit(data)
     return data
 
 

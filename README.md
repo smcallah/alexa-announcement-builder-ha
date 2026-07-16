@@ -71,6 +71,11 @@ selected Content type determines what is sent; values left in fields belonging
 to another type are ignored. Saved items collapse into readable rows with Edit
 and Delete controls. Drag the handle on a row to change the playback order.
 
+Home Assistant's native object editor displays the same static fields for every
+item. Field labels identify which options apply to Message, Sound, and Raw SSML
+items. The integration rejects an item with no Content type or a blank matching
+content field before calling the notify action.
+
 Add as many items as needed. Message items keep their own voice, prosody,
 whisper, emotion, and speech-domain settings. The integration normalizes every
 item independently and then concatenates the generated SSML in list order.
@@ -159,7 +164,10 @@ replaces the previous value instead of combining both. The Content type is the
 authority for each row, so message-only values left in a Sound row are ignored.
 Sounds can be placed anywhere in the ordered sequence. Selecting an Announce
 target for a sequence containing Sound is rejected with a clear validation
-error; select the matching Speak target instead.
+error; select the matching Speak target instead. Amazon accepts no more than
+five audio clips in one message. The integration enforces that total across
+Sound items and any `<audio>` tags included in Raw SSML, while allowing any
+number of Message items.
 
 ## Voice selection
 
