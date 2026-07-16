@@ -23,6 +23,7 @@ ATTR_RAW_SSML = "raw_ssml"
 
 DEFAULT_VOICE = "alexa_plus"
 DEFAULT_EMOTION_INTENSITY = "medium"
+MAX_AUDIO_CLIPS_PER_MESSAGE = 5
 
 COMMON_SOUNDS = {
     "doorbell_chime": "soundbank://soundlibrary/home/amzn_sfx_doorbell_chime_01",

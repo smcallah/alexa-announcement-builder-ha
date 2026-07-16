@@ -154,6 +154,31 @@ def test_sequence_selector_is_repeatable_and_not_nested() -> None:
     assert all("object" not in field["selector"] for field in fields.values())
 
 
+def test_sequence_field_labels_explain_native_editor_requirements() -> None:
+    metadata = yaml.safe_load((INTEGRATION / "services.yaml").read_text("utf-8"))
+    sequence, fields = _sequence_fields(metadata)
+
+    assert "requires a Content type" in sequence["description"]
+    assert "Maximum five audio clips" in sequence["description"]
+    assert fields["content_type"]["label"] == "Content type (required)"
+    assert fields["text"]["label"].endswith("(Message only)")
+    assert fields["sound"]["label"].endswith("(Sound only)")
+    assert fields["raw_ssml"]["label"].endswith("(Raw SSML only)")
+    assert all(
+        fields[field]["label"].endswith("(Message only)")
+        for field in (
+            "voice",
+            "rate",
+            "pitch",
+            "volume",
+            "whisper",
+            "emotion",
+            "emotion_intensity",
+            "domain",
+        )
+    )
+
+
 def test_object_selector_fields_use_home_assistant_supported_keys() -> None:
     metadata = yaml.safe_load((INTEGRATION / "services.yaml").read_text("utf-8"))
     _, fields = _sequence_fields(metadata)

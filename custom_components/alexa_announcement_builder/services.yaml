@@ -14,7 +14,7 @@ send:
               domain: notify
     sequence:
       name: Sequence
-      description: Add Message, Sound, or Raw SSML items. Drag the collapsed items to set playback order.
+      description: Each item requires a Content type and its matching field. Other fields are ignored. Drag items to set playback order. Maximum five audio clips.
       required: true
       selector:
         object:
@@ -23,7 +23,7 @@ send:
           description_field: sound
           fields:
             content_type:
-              label: Content type
+              label: Content type (required)
               required: true
               selector:
                 select:
@@ -32,12 +32,12 @@ send:
                     - Sound
                     - Raw SSML
             text:
-              label: Message text
+              label: Message text (Message only)
               selector:
                 text:
                   multiline: true
             sound:
-              label: Sound
+              label: Sound selection (Sound only)
               selector:
                 select:
                   mode: dropdown
@@ -68,12 +68,12 @@ send:
                     - label: Fire extinguisher
                       value: Fire extinguisher
             raw_ssml:
-              label: Raw SSML
+              label: Raw SSML markup (Raw SSML only)
               selector:
                 text:
                   multiline: true
             voice:
-              label: Voice
+              label: Voice (Message only)
               selector:
                 select:
                   mode: dropdown
@@ -159,7 +159,7 @@ send:
                     - label: Mia - Spanish, Mexican (es-MX)
                       value: Mia
             rate:
-              label: Rate
+              label: Rate (Message only)
               selector:
                 choose:
                   choices:
@@ -182,7 +182,7 @@ send:
                           unit_of_measurement: "%"
                           mode: box
             pitch:
-              label: Pitch
+              label: Pitch (Message only)
               selector:
                 choose:
                   choices:
@@ -205,7 +205,7 @@ send:
                           unit_of_measurement: "%"
                           mode: box
             volume:
-              label: Volume
+              label: Volume (Message only)
               selector:
                 choose:
                   choices:
@@ -229,18 +229,18 @@ send:
                           unit_of_measurement: dB
                           mode: box
             whisper:
-              label: Whisper
+              label: Whisper (Message only)
               selector:
                 boolean:
             emotion:
-              label: Emotion
+              label: Emotion (Message only)
               selector:
                 select:
                   options:
                     - excited
                     - disappointed
             emotion_intensity:
-              label: Emotion intensity
+              label: Emotion intensity (Message only)
               selector:
                 select:
                   options:
@@ -248,7 +248,7 @@ send:
                     - medium
                     - high
             domain:
-              label: Speech domain
+              label: Speech domain (Message only)
               selector:
                 select:
                   options:

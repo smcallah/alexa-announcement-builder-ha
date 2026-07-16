@@ -280,6 +280,58 @@ def test_flat_sequence_content_type_ignores_inactive_fields() -> None:
     assert data["sequence"] == [{"sound": COMMON_SOUNDS["doorbell_chime"]}]
 
 
+def test_sequence_accepts_five_audio_clips_mixed_with_messages() -> None:
+    audio_tag = (
+        '<audio src="soundbank://soundlibrary/home/amzn_sfx_doorbell_chime_01"/>'
+    )
+    data = SEND_SCHEMA(
+        {
+            "target": "notify.office_echo_speak",
+            "sequence": [
+                {"content_type": "Sound", "sound": "Door knock"},
+                {"content_type": "Message", "text": "First message."},
+                {"content_type": "Sound", "sound": "Applause"},
+                {"content_type": "Message", "text": "Second message."},
+                {"content_type": "Sound", "sound": "Thunder"},
+                {
+                    "content_type": "Raw SSML",
+                    "raw_ssml": f"{audio_tag}{audio_tag}",
+                },
+            ],
+        }
+    )
+
+    assert build_ssml(data).count("<audio ") == 5
+
+
+@pytest.mark.parametrize(
+    "sequence",
+    [
+        [{"content_type": "Sound", "sound": "Door knock"}] * 6,
+        [
+            *([{"content_type": "Sound", "sound": "Door knock"}] * 4),
+            {
+                "content_type": "Raw SSML",
+                "raw_ssml": (
+                    '<audio src="soundbank://soundlibrary/home/'
+                    'amzn_sfx_doorbell_chime_01"/>'
+                    '<AUDIO src="soundbank://soundlibrary/home/'
+                    'amzn_sfx_doorbell_chime_01"></AUDIO>'
+                ),
+            },
+        ],
+    ],
+)
+def test_schema_rejects_more_than_five_audio_clips(sequence: list[dict]) -> None:
+    with pytest.raises(vol.Invalid, match=r"at most 5 audio clips.*contains 6"):
+        SEND_SCHEMA(
+            {
+                "target": "notify.office_echo_speak",
+                "sequence": sequence,
+            }
+        )
+
+
 def test_sequence_message_only_is_valid_for_announce_target() -> None:
     data = SEND_SCHEMA(
         {
@@ -722,6 +774,37 @@ def test_schema_rejects_invalid_sequence(sequence: object) -> None:
             {
                 "target": "notify.office_echo_speak",
                 "sequence": sequence,
+            }
+        )
+
+
+@pytest.mark.parametrize(
+    ("item", "error"),
+    [
+        ({}, "choose Content type"),
+        ({"content_type": "Message"}, "Message requires non-empty message text"),
+        (
+            {"content_type": "Message", "text": "   "},
+            "Message requires non-empty message text",
+        ),
+        (
+            {"content_type": "Sound"},
+            "Sound requires a sound selection or custom source",
+        ),
+        (
+            {"content_type": "Raw SSML", "raw_ssml": ""},
+            "Raw SSML requires non-empty markup",
+        ),
+    ],
+)
+def test_schema_explains_incomplete_native_sequence_items(
+    item: dict, error: str
+) -> None:
+    with pytest.raises(vol.Invalid, match=error):
+        SEND_SCHEMA(
+            {
+                "target": "notify.office_echo_speak",
+                "sequence": [item],
             }
         )
 

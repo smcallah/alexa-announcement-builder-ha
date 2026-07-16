@@ -16,7 +16,7 @@
       "description": "Build an ordered Alexa SSML sequence and send it through a notify entity.",
       "fields": {
         "target": { "name": "Target", "description": "Alexa Devices Speak or Announce notify entity. A sequence containing Sound requires a Speak target." },
-        "sequence": { "name": "Sequence", "description": "Add items, select each Content type, and drag them into playback order." },
+        "sequence": { "name": "Sequence", "description": "Each item requires a Content type and its matching field. Other fields are ignored. Drag items to set playback order. Maximum five audio clips." },
         "break_before_ms": { "name": "Break before", "description": "Silent break before the complete sequence, in milliseconds." },
         "break_after_ms": { "name": "Break after", "description": "Silent break after the complete sequence, in milliseconds." }
       }
