@@ -65,11 +65,26 @@ RAW_SSML_CHOICE = "Raw SSML"
 
 
 def _notify_entity_id(value: Any) -> str:
-    """Validate that a value is a notify entity ID."""
+    """Validate one notify entity ID."""
     entity_id = cv.entity_id(value)
     if not entity_id.startswith("notify."):
         raise vol.Invalid("target must be a notify entity ID")
     return entity_id
+
+
+def _notify_entity_ids(value: Any) -> str | list[str]:
+    """Validate one or more notify entity IDs while preserving the input shape."""
+    if isinstance(value, str):
+        return _notify_entity_id(value)
+    if not isinstance(value, list) or not value:
+        raise vol.Invalid("target must contain at least one notify entity ID")
+    return [_notify_entity_id(entity_id) for entity_id in value]
+
+
+def _has_announce_target(targets: str | list[str]) -> bool:
+    """Return whether any selected target is an Alexa Announce entity."""
+    targets = [targets] if isinstance(targets, str) else targets
+    return any(_ANNOUNCE_ENTITY_ID.search(target) for target in targets)
 
 
 def _format_number(value: Decimal) -> str:
@@ -372,7 +387,7 @@ def _normalize_and_validate_content(data: dict[str, Any]) -> dict[str, Any]:
                 f"sequence cannot be combined with single-content fields: {names}"
             )
         _validate_audio_clip_limit(data)
-        if _ANNOUNCE_ENTITY_ID.search(data[ATTR_TARGET]) and any(
+        if _has_announce_target(data[ATTR_TARGET]) and any(
             item.get(ATTR_SOUND) for item in data[ATTR_SEQUENCE]
         ):
             raise vol.Invalid(
@@ -404,7 +419,7 @@ def _normalize_and_validate_content(data: dict[str, Any]) -> dict[str, Any]:
                 f"{content_field} cannot be combined with message options: {names}"
             )
 
-    if content_field == ATTR_SOUND and _ANNOUNCE_ENTITY_ID.search(data[ATTR_TARGET]):
+    if content_field == ATTR_SOUND and _has_announce_target(data[ATTR_TARGET]):
         raise vol.Invalid(
             "Sound requires an Alexa Devices Speak target; Announce targets only "
             "play the announcement chime"
@@ -416,7 +431,7 @@ def _normalize_and_validate_content(data: dict[str, Any]) -> dict[str, Any]:
 SEND_SCHEMA = vol.All(
     vol.Schema(
         {
-            vol.Required(ATTR_TARGET): _notify_entity_id,
+            vol.Required(ATTR_TARGET): _notify_entity_ids,
             vol.Optional(ATTR_SEQUENCE): _sequence,
             vol.Optional(ATTR_CONTENT): _content,
             vol.Optional(ATTR_TEXT): cv.string,

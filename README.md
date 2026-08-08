@@ -3,8 +3,8 @@
 Alexa Announcement Builder is a service-only Home Assistant custom integration
 that combines ordered messages, sounds, and optional raw markup into
 Alexa-compatible SSML. Each message can use its own voice and speech options.
-The completed sequence is sent through an existing Alexa Devices notify entity
-using Home Assistant's `notify.send_message` action.
+The completed sequence is sent through one or more existing Alexa Devices notify
+entities using Home Assistant's `notify.send_message` action.
 
 The integration creates no entities and does not connect to Amazon itself. An
 Alexa Devices integration that provides notify entities such as
@@ -43,7 +43,9 @@ Tools and automations.
 ```yaml
 action: alexa_announcement_builder.send
 data:
-  target: notify.office_echo_speak
+  target:
+    - notify.office_echo_speak
+    - notify.kitchen_echo_speak
   sequence:
     - content_type: Message
       text: "The garage door is still open."
@@ -56,11 +58,12 @@ data:
         Named volume: loud
 ```
 
-The selected notify entity decides whether Alexa speaks or announces the
-message. Choose the corresponding `_speak` or `_announce` entity as the target.
-Any sequence containing Sound must use a `_speak` entity because the Alexa
-Devices Announce path plays its announcement chime but does not play embedded
-audio markup.
+Each selected notify entity decides whether that Alexa speaks or announces the
+message. Select any combination of `_speak` and `_announce` entities for a
+message-only sequence. Any sequence containing Sound requires every selected
+entity to be a `_speak` entity because the Alexa Devices Announce path plays its
+announcement chime but does not play embedded audio markup. Existing YAML with
+one `target` string remains supported.
 
 ## Sequence builder
 
