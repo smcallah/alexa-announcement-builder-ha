@@ -1,14 +1,17 @@
 send:
   name: Send Alexa announcement
-  description: Build an ordered Alexa SSML sequence and send it through a notify entity.
+  description: Build an ordered Alexa SSML sequence and send it through one or more notify entities.
   fields:
     target:
-      name: Target
-      description: Alexa Devices Speak or Announce notify entity that will receive the SSML.
+      name: Targets
+      description: Alexa Devices Speak or Announce notify entities that will receive the SSML.
       required: true
-      example: notify.office_echo_speak
+      example:
+        - notify.office_echo_speak
+        - notify.kitchen_echo_speak
       selector:
         entity:
+          multiple: true
           filter:
             - integration: alexa_devices
               domain: notify

@@ -98,7 +98,10 @@ async def test_service_forwards_ordered_sequence_to_notify() -> None:
 
     data = SEND_SCHEMA(
         {
-            "target": "notify.office_echo_speak",
+            "target": [
+                "notify.office_echo_speak",
+                "notify.kitchen_echo_speak",
+            ],
             "sequence": [
                 {
                     "content": {
@@ -134,7 +137,12 @@ async def test_service_forwards_ordered_sequence_to_notify() -> None:
             '<audio src="soundbank://soundlibrary/doors/doors_knocks/knocks_01"/>'
             '<voice name="Joanna">Please check the camera.</voice>'
         },
-        target={"entity_id": "notify.office_echo_speak"},
+        target={
+            "entity_id": [
+                "notify.office_echo_speak",
+                "notify.kitchen_echo_speak",
+            ]
+        },
         blocking=True,
     )
 

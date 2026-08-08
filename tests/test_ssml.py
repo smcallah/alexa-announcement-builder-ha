@@ -731,7 +731,10 @@ def test_schema_rejects_sequence_with_sound_sent_to_announce_target() -> None:
     with pytest.raises(vol.Invalid, match="sequence containing Sound"):
         SEND_SCHEMA(
             {
-                "target": "notify.office_echo_announce",
+                "target": [
+                    "notify.office_echo_speak",
+                    "notify.kitchen_echo_announce",
+                ],
                 "sequence": [
                     {
                         "content": {
@@ -748,6 +751,51 @@ def test_schema_rejects_sequence_with_sound_sent_to_announce_target() -> None:
                 ],
             }
         )
+
+
+def test_schema_accepts_multiple_message_targets() -> None:
+    data = SEND_SCHEMA(
+        {
+            "target": [
+                "notify.office_echo_speak",
+                "notify.kitchen_echo_announce",
+            ],
+            "text": "Hello.",
+        }
+    )
+
+    assert data["target"] == [
+        "notify.office_echo_speak",
+        "notify.kitchen_echo_announce",
+    ]
+
+
+def test_schema_preserves_single_target_for_backward_compatibility() -> None:
+    data = SEND_SCHEMA({"target": "notify.office_echo_speak", "text": "Hello."})
+
+    assert data["target"] == "notify.office_echo_speak"
+
+
+def test_schema_rejects_sound_when_any_target_is_announce() -> None:
+    with pytest.raises(vol.Invalid, match="Speak target"):
+        SEND_SCHEMA(
+            {
+                "target": [
+                    "notify.office_echo_speak",
+                    "notify.kitchen_echo_announce",
+                ],
+                "content": {
+                    "active_choice": "Sound",
+                    "Sound": "doorbell_chime",
+                },
+            }
+        )
+
+
+@pytest.mark.parametrize("target", [[], ["notify.office_echo_speak", "light.office"]])
+def test_schema_rejects_invalid_target_lists(target: list[str]) -> None:
+    with pytest.raises(vol.Invalid):
+        SEND_SCHEMA({"target": target, "text": "Hello."})
 
 
 @pytest.mark.parametrize(

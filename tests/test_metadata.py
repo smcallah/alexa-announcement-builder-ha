@@ -74,7 +74,8 @@ def test_target_selector_only_lists_alexa_device_notify_entities() -> None:
     selector = metadata["send"]["fields"]["target"]["selector"]["entity"]
 
     assert selector == {
-        "filter": [{"integration": "alexa_devices", "domain": "notify"}]
+        "multiple": True,
+        "filter": [{"integration": "alexa_devices", "domain": "notify"}],
     }
 
 
