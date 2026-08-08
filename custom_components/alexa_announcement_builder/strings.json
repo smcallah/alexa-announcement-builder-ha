@@ -16,6 +16,9 @@
       "description": "Build an ordered Alexa SSML sequence and send it through one or more notify entities.",
       "fields": {
         "target": { "name": "Targets", "description": "Alexa Devices Speak or Announce notify entities. A sequence containing Sound requires all selected entities to be Speak targets." },
+        "adjust_volume": { "name": "Temporarily adjust device volume", "description": "Set each selected Echo to the announcement volume, then restore each device's previous volume." },
+        "announcement_volume": { "name": "Announcement volume", "description": "Device volume used while speaking or announcing. Applies only when temporary volume adjustment is enabled." },
+        "restore_after": { "name": "Restore volume after", "description": "Seconds to wait after a successful send before restoring each device's previous volume." },
         "sequence": { "name": "Sequence", "description": "Each item requires a Content type and its matching field. Other fields are ignored. Drag items to set playback order. Maximum five audio clips." },
         "break_before_ms": { "name": "Break before", "description": "Silent break before the complete sequence, in milliseconds." },
         "break_after_ms": { "name": "Break after", "description": "Silent break after the complete sequence, in milliseconds." }

@@ -40,6 +40,9 @@ def test_service_metadata_describes_all_schema_fields() -> None:
     fields = metadata["send"]["fields"]
     assert set(fields) == {
         "target",
+        "adjust_volume",
+        "announcement_volume",
+        "restore_after",
         "sequence",
         "break_before_ms",
         "break_after_ms",
