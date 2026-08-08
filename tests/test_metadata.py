@@ -71,8 +71,10 @@ def test_voice_selector_lists_every_supported_voice() -> None:
 
 def test_target_selector_only_lists_alexa_device_notify_entities() -> None:
     metadata = yaml.safe_load((INTEGRATION / "services.yaml").read_text("utf-8"))
-    selector = metadata["send"]["fields"]["target"]["selector"]["entity"]
+    target = metadata["send"]["fields"]["target"]
+    selector = target["selector"]["entity"]
 
+    assert target["default"] == []
     assert selector == {
         "multiple": True,
         "filter": [{"integration": "alexa_devices", "domain": "notify"}],

@@ -6,6 +6,7 @@ send:
       name: Targets
       description: Alexa Devices Speak or Announce notify entities that will receive the SSML.
       required: true
+      default: []
       example:
         - notify.office_echo_speak
         - notify.kitchen_echo_speak
