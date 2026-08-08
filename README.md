@@ -65,6 +65,19 @@ entity to be a `_speak` entity because the Alexa Devices Announce path plays its
 announcement chime but does not play embedded audio markup. Existing YAML with
 one `target` string remains supported.
 
+Home Assistant 2026.8 cannot render a multiple-entity selector when an action
+editor still holds the former single-string value. If an existing action shows
+an empty **Targets** field, switch that action to YAML mode and convert the
+single value to a one-item list:
+
+```yaml
+target:
+  - notify.office_echo_speak
+```
+
+Switch back to UI mode and use **Add entity** to select more Alexa devices. New
+actions start with an empty list and do not require this conversion.
+
 ## Sequence builder
 
 The **Sequence** field starts with an **Add** button. Each added item opens one
