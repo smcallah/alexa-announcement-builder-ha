@@ -16,6 +16,34 @@ send:
           filter:
             - integration: alexa_devices
               domain: notify
+    adjust_volume:
+      name: Temporarily adjust device volume
+      description: Set each selected Echo to the announcement volume, then restore each device's previous volume.
+      default: false
+      selector:
+        boolean:
+    announcement_volume:
+      name: Announcement volume
+      description: Device volume used while speaking or announcing. Applies only when temporary volume adjustment is enabled.
+      default: 70
+      selector:
+        number:
+          min: 1
+          max: 100
+          step: 1
+          unit_of_measurement: "%"
+          mode: slider
+    restore_after:
+      name: Restore volume after
+      description: Seconds to wait after a successful send before restoring each device's previous volume.
+      default: 10
+      selector:
+        number:
+          min: 0
+          max: 300
+          step: 1
+          unit_of_measurement: s
+          mode: box
     sequence:
       name: Sequence
       description: Each item requires a Content type and its matching field. Other fields are ignored. Drag items to set playback order. Maximum five audio clips.

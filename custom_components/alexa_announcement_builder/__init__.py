@@ -14,6 +14,8 @@ from homeassistant.core import HomeAssistant, ServiceCall
 from homeassistant.helpers import config_validation as cv
 
 from .const import (
+    ATTR_ADJUST_VOLUME,
+    ATTR_ANNOUNCEMENT_VOLUME,
     ATTR_BREAK_AFTER_MS,
     ATTR_BREAK_BEFORE_MS,
     ATTR_CONTENT,
@@ -23,6 +25,7 @@ from .const import (
     ATTR_PITCH,
     ATTR_RATE,
     ATTR_RAW_SSML,
+    ATTR_RESTORE_AFTER,
     ATTR_SEQUENCE,
     ATTR_SOUND,
     ATTR_SPEECH_DOMAIN,
@@ -33,6 +36,8 @@ from .const import (
     ATTR_WHISPER,
     COMMON_SOUND_NAMES,
     COMMON_SOUNDS,
+    DEFAULT_ANNOUNCEMENT_VOLUME,
+    DEFAULT_RESTORE_AFTER,
     DOMAIN,
     EMOTION_INTENSITIES,
     EMOTIONS,
@@ -46,6 +51,7 @@ from .const import (
 )
 from .sound import normalize_sound_source
 from .ssml import build_ssml
+from .volume import temporary_device_volume
 
 _LOGGER = logging.getLogger(__name__)
 _ANNOUNCE_ENTITY_ID = re.compile(r"_announce(?:_\d+)?$")
@@ -451,6 +457,13 @@ SEND_SCHEMA = vol.All(
                 vol.Coerce(int), vol.Range(min=0)
             ),
             vol.Optional(ATTR_RAW_SSML): cv.string,
+            vol.Optional(ATTR_ADJUST_VOLUME): cv.boolean,
+            vol.Optional(ATTR_ANNOUNCEMENT_VOLUME): vol.All(
+                vol.Coerce(int), vol.Range(min=1, max=100)
+            ),
+            vol.Optional(ATTR_RESTORE_AFTER): vol.All(
+                vol.Coerce(int), vol.Range(min=0, max=300)
+            ),
         },
         extra=vol.PREVENT_EXTRA,
     ),
@@ -465,13 +478,31 @@ async def async_setup(hass: HomeAssistant, config: dict[str, Any]) -> bool:
         target = call.data[ATTR_TARGET]
         message = build_ssml(call.data)
         _LOGGER.debug("Sending generated Alexa SSML to %s", target)
-        await hass.services.async_call(
-            "notify",
-            "send_message",
-            {"message": message},
-            target={"entity_id": target},
-            blocking=True,
+
+        async def async_notify() -> None:
+            await hass.services.async_call(
+                "notify",
+                "send_message",
+                {"message": message},
+                target={"entity_id": target},
+                blocking=True,
+            )
+
+        if not call.data.get(ATTR_ADJUST_VOLUME, False):
+            await async_notify()
+            return
+
+        announcement_volume = call.data.get(
+            ATTR_ANNOUNCEMENT_VOLUME, DEFAULT_ANNOUNCEMENT_VOLUME
         )
+        targets = [target] if isinstance(target, str) else target
+        async with temporary_device_volume(
+            hass,
+            targets,
+            announcement_volume / 100,
+            call.data.get(ATTR_RESTORE_AFTER, DEFAULT_RESTORE_AFTER),
+        ):
+            await async_notify()
 
     hass.services.async_register(
         DOMAIN,

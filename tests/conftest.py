@@ -72,6 +72,7 @@ config_entries = ModuleType("homeassistant.config_entries")
 core = ModuleType("homeassistant.core")
 helpers = ModuleType("homeassistant.helpers")
 config_validation = ModuleType("homeassistant.helpers.config_validation")
+entity_registry = ModuleType("homeassistant.helpers.entity_registry")
 config_entries.ConfigEntry = ConfigEntry
 config_entries.ConfigFlow = ConfigFlow
 core.HomeAssistant = HomeAssistant
@@ -79,7 +80,20 @@ core.ServiceCall = ServiceCall
 config_validation.string = _string
 config_validation.boolean = _boolean
 config_validation.entity_id = _entity_id
+
+
+def _registry_async_get(hass: Any) -> Any:
+    return hass.entity_registry
+
+
+def _entries_for_device(registry: Any, device_id: str) -> list[Any]:
+    return registry.entries_by_device.get(device_id, [])
+
+
+entity_registry.async_get = _registry_async_get
+entity_registry.async_entries_for_device = _entries_for_device
 helpers.config_validation = config_validation
+helpers.entity_registry = entity_registry
 homeassistant.config_entries = config_entries
 homeassistant.core = core
 homeassistant.helpers = helpers
@@ -88,6 +102,7 @@ sys.modules.setdefault("homeassistant.config_entries", config_entries)
 sys.modules.setdefault("homeassistant.core", core)
 sys.modules.setdefault("homeassistant.helpers", helpers)
 sys.modules.setdefault("homeassistant.helpers.config_validation", config_validation)
+sys.modules.setdefault("homeassistant.helpers.entity_registry", entity_registry)
 
 
 def make_service_call(data: dict[str, Any]) -> Any:

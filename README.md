@@ -78,6 +78,36 @@ target:
 Switch back to UI mode and use **Add entity** to select more Alexa devices. New
 actions start with an empty list and do not require this conversion.
 
+## Temporary device volume
+
+Enable **Temporarily adjust device volume** to set every selected Echo to the
+chosen **Announcement volume** before the message is sent. The integration
+records each device's current volume separately, waits one second for the new
+levels to settle, sends the speech or announcement, then restores every device
+to its own previous volume after **Restore volume after** seconds. The defaults
+are 70% and 10 seconds.
+
+```yaml
+action: alexa_announcement_builder.send
+data:
+  target:
+    - notify.office_echo_announce
+    - notify.kitchen_echo_announce
+  adjust_volume: true
+  announcement_volume: 70
+  restore_after: 10
+  sequence:
+    - content_type: Message
+      text: "Dinner is ready."
+```
+
+The restore delay starts after Alexa Devices accepts the send request; Home
+Assistant does not report the exact moment playback finishes. Increase the
+delay for longer messages. If someone changes an Echo's volume while the
+message is playing, the integration leaves that new volume in place instead of
+overwriting it. Overlapping sends to the same device wait for the earlier send
+to finish its restore cycle.
+
 ## Sequence builder
 
 The **Sequence** field starts with an **Add** button. Each added item opens one
