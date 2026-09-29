@@ -9,5 +9,5 @@
   "integration_type": "service",
   "iot_class": "calculated",
   "issue_tracker": "https://github.com/smcallah/alexa-announcement-builder-ha/issues",
-  "version": "0.3.2"
+  "version": "26.9.0"
 }
