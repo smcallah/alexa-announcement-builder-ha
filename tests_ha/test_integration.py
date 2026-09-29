@@ -174,15 +174,16 @@ async def test_sound_allowed_for_speak_entity_renamed_like_announce(
     hass: HomeAssistant, notify_calls: list[ServiceCall]
 ) -> None:
     echo = _add_echo(hass, "kitchen", 0.4)
+    # The Echo's Announce entity already holds notify.kitchen_announce.
     er.async_get(hass).async_update_entity(
-        echo.speak, new_entity_id="notify.kitchen_announce"
+        echo.speak, new_entity_id="notify.kitchen_echo_announce"
     )
 
     await hass.services.async_call(
         DOMAIN,
         "send",
         {
-            "target": "notify.kitchen_announce",
+            "target": "notify.kitchen_echo_announce",
             "sequence": [{"content_type": "Sound", "sound": "Doorbell chime"}],
         },
         blocking=True,
