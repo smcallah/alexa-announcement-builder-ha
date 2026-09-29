@@ -11,9 +11,12 @@ from typing import Any
 import voluptuous as vol
 from homeassistant.config_entries import ConfigEntry
 from homeassistant.core import HomeAssistant, ServiceCall
+from homeassistant.exceptions import ServiceValidationError
 from homeassistant.helpers import config_validation as cv
+from homeassistant.helpers import entity_registry as er
 
 from .const import (
+    ALEXA_DEVICES_DOMAIN,
     ATTR_ADJUST_VOLUME,
     ATTR_ANNOUNCEMENT_VOLUME,
     ATTR_BREAK_AFTER_MS,
@@ -87,10 +90,32 @@ def _notify_entity_ids(value: Any) -> str | list[str]:
     return [_notify_entity_id(entity_id) for entity_id in value]
 
 
-def _has_announce_target(targets: str | list[str]) -> bool:
-    """Return whether any selected target is an Alexa Announce entity."""
+def _is_announce_target(registry: er.EntityRegistry, entity_id: str) -> bool:
+    """Return whether a notify entity is an Alexa Devices Announce entity."""
+    entry = registry.async_get(entity_id)
+    if entry is not None and entry.platform == ALEXA_DEVICES_DOMAIN:
+        # Unlike the entity ID, the translation key survives renaming.
+        return entry.translation_key == "announce"
+    return bool(_ANNOUNCE_ENTITY_ID.search(entity_id))
+
+
+def _validate_sound_targets(hass: HomeAssistant, data: Mapping[str, Any]) -> None:
+    """Reject Sound content sent to Announce entities, which only play a chime."""
+    items = data.get(ATTR_SEQUENCE, [data])
+    if not any(item.get(ATTR_SOUND) for item in items):
+        return
+
+    targets = data[ATTR_TARGET]
     targets = [targets] if isinstance(targets, str) else targets
-    return any(_ANNOUNCE_ENTITY_ID.search(target) for target in targets)
+    registry = er.async_get(hass)
+    announce_targets = [
+        target for target in targets if _is_announce_target(registry, target)
+    ]
+    if announce_targets:
+        raise ServiceValidationError(
+            "Sound requires Alexa Devices Speak targets; Announce targets only "
+            f"play the announcement chime: {', '.join(announce_targets)}"
+        )
 
 
 def _format_number(value: Decimal) -> str:
@@ -393,13 +418,6 @@ def _normalize_and_validate_content(data: dict[str, Any]) -> dict[str, Any]:
                 f"sequence cannot be combined with single-content fields: {names}"
             )
         _validate_audio_clip_limit(data)
-        if _has_announce_target(data[ATTR_TARGET]) and any(
-            item.get(ATTR_SOUND) for item in data[ATTR_SEQUENCE]
-        ):
-            raise vol.Invalid(
-                "A sequence containing Sound requires an Alexa Devices Speak "
-                "target; Announce targets only play the announcement chime"
-            )
         return data
 
     if ATTR_CONTENT in data:
@@ -425,11 +443,6 @@ def _normalize_and_validate_content(data: dict[str, Any]) -> dict[str, Any]:
                 f"{content_field} cannot be combined with message options: {names}"
             )
 
-    if content_field == ATTR_SOUND and _has_announce_target(data[ATTR_TARGET]):
-        raise vol.Invalid(
-            "Sound requires an Alexa Devices Speak target; Announce targets only "
-            "play the announcement chime"
-        )
     _validate_audio_clip_limit(data)
     return data
 
@@ -475,6 +488,7 @@ async def async_setup(hass: HomeAssistant, config: dict[str, Any]) -> bool:
     """Set up Alexa Announcement Builder and register its send action."""
 
     async def async_send(call: ServiceCall) -> None:
+        _validate_sound_targets(hass, call.data)
         target = call.data[ATTR_TARGET]
         message = build_ssml(call.data)
         _LOGGER.debug("Sending generated Alexa SSML to %s", target)

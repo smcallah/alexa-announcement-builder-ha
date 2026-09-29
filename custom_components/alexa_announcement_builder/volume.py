@@ -11,23 +11,28 @@ from dataclasses import dataclass
 from homeassistant.core import HomeAssistant
 from homeassistant.helpers import entity_registry as er
 
-from .const import DOMAIN
+from .const import ALEXA_DEVICES_DOMAIN, DOMAIN
 
 _LOGGER = logging.getLogger(__name__)
 
-_ALEXA_DEVICES = "alexa_devices"
 _MEDIA_PLAYER_DOMAIN = "media_player"
 _VOLUME_LEVEL = "volume_level"
 _VOLUME_LOCKS = "volume_locks"
+_VOLUME_ADJUSTMENTS = "volume_adjustments"
 VOLUME_SETTLE_SECONDS = 1
 
 
-@dataclass(frozen=True)
-class VolumeSnapshot:
-    """An Alexa media player's volume before an announcement."""
+@dataclass(eq=False)
+class VolumeAdjustment:
+    """One send's temporary volume on an Alexa media player.
 
-    entity_id: str
-    volume_level: float
+    Identity matters: the latest send to a device owns its adjustment, and only
+    the owner restores the original volume.
+    """
+
+    original_volume: float
+    temporary_volume: float
+    confirmed: bool = False
 
 
 def _state_volume(hass: HomeAssistant, entity_id: str) -> float | None:
@@ -69,7 +74,7 @@ def _media_player_ids(hass: HomeAssistant, notify_targets: Iterable[str]) -> lis
                     registry, notify_entry.device_id
                 )
                 if entry.domain == _MEDIA_PLAYER_DOMAIN
-                and entry.platform == _ALEXA_DEVICES
+                and entry.platform == ALEXA_DEVICES_DOMAIN
             ),
             None,
         )
@@ -89,8 +94,29 @@ def _locks(hass: HomeAssistant, entity_ids: Iterable[str]) -> list[asyncio.Lock]
     domain_data = hass.data.setdefault(DOMAIN, {})
     volume_locks: dict[str, asyncio.Lock] = domain_data.setdefault(_VOLUME_LOCKS, {})
     return [
-        volume_locks.setdefault(entity_id, asyncio.Lock()) for entity_id in entity_ids
+        volume_locks.setdefault(entity_id, asyncio.Lock())
+        for entity_id in sorted(entity_ids)
     ]
+
+
+def _adjustments(hass: HomeAssistant) -> dict[str, VolumeAdjustment]:
+    """Return the adjustments still waiting to be restored, by entity ID."""
+    domain_data = hass.data.setdefault(DOMAIN, {})
+    return domain_data.setdefault(_VOLUME_ADJUSTMENTS, {})
+
+
+@asynccontextmanager
+async def _holding(locks: list[asyncio.Lock]) -> AsyncIterator[None]:
+    """Hold every lock in order, releasing whichever were acquired."""
+    acquired: list[asyncio.Lock] = []
+    try:
+        for lock in locks:
+            await lock.acquire()
+            acquired.append(lock)
+        yield
+    finally:
+        for lock in reversed(acquired):
+            lock.release()
 
 
 async def _set_volume(hass: HomeAssistant, entity_id: str, volume_level: float) -> None:
@@ -105,44 +131,54 @@ async def _set_volume(hass: HomeAssistant, entity_id: str, volume_level: float) 
 
 
 async def _restore_volumes(
-    hass: HomeAssistant,
-    adjusted: list[VolumeSnapshot],
-    temporary_volume: float,
-    confirmed: set[str],
+    hass: HomeAssistant, adjusted: dict[str, VolumeAdjustment]
 ) -> None:
-    """Restore volumes without masking an in-flight send exception."""
-    for snapshot in adjusted:
-        current = _state_volume(hass, snapshot.entity_id)
-        if snapshot.entity_id in confirmed and not _volume_matches(
-            current, temporary_volume
+    """Restore devices this send still owns; callers hold their locks."""
+    adjustments = _adjustments(hass)
+    for entity_id, adjustment in adjusted.items():
+        if adjustments.get(entity_id) is not adjustment:
+            # A later send took over this device and will restore it.
+            continue
+        del adjustments[entity_id]
+
+        current = _state_volume(hass, entity_id)
+        if adjustment.confirmed and not _volume_matches(
+            current, adjustment.temporary_volume
         ):
             _LOGGER.info(
                 "Skipping volume restore for %s because its volume changed during "
                 "the announcement",
-                snapshot.entity_id,
+                entity_id,
             )
             continue
         try:
-            await _set_volume(hass, snapshot.entity_id, snapshot.volume_level)
+            await _set_volume(hass, entity_id, adjustment.original_volume)
         except Exception:  # noqa: BLE001 - one restore must not block the others
-            _LOGGER.exception("Failed to restore volume for %s", snapshot.entity_id)
+            _LOGGER.exception("Failed to restore volume for %s", entity_id)
 
 
 async def _shielded_restore(
-    hass: HomeAssistant,
-    adjusted: list[VolumeSnapshot],
-    temporary_volume: float,
-    confirmed: set[str],
+    hass: HomeAssistant, adjusted: dict[str, VolumeAdjustment]
 ) -> None:
-    """Complete volume restoration even if the service task is cancelled."""
-    restore_task = asyncio.create_task(
-        _restore_volumes(hass, adjusted, temporary_volume, confirmed)
-    )
+    """Complete volume restoration even if the calling task is cancelled."""
+    restore_task = asyncio.create_task(_restore_volumes(hass, adjusted))
     try:
         await asyncio.shield(restore_task)
     except asyncio.CancelledError:
         await restore_task
         raise
+
+
+async def _restore_after_delay(
+    hass: HomeAssistant, adjusted: dict[str, VolumeAdjustment], restore_after: int
+) -> None:
+    """Wait for playback to finish, then restore the devices this send owns."""
+    try:
+        await asyncio.sleep(restore_after)
+    finally:
+        # Also restore when Home Assistant cancels the wait during shutdown.
+        async with _holding(_locks(hass, adjusted)):
+            await _shielded_restore(hass, adjusted)
 
 
 @asynccontextmanager
@@ -152,54 +188,51 @@ async def temporary_device_volume(
     temporary_volume: float,
     restore_after: int,
 ) -> AsyncIterator[None]:
-    """Raise Alexa volumes around a notification and restore each original value."""
+    """Raise Alexa volumes around a notification and restore each original value.
+
+    The context exits as soon as the notification is sent. Restoration runs in a
+    background task after ``restore_after`` seconds, or immediately if sending
+    fails.
+    """
     entity_ids = _media_player_ids(hass, notify_targets)
-    locks = _locks(hass, entity_ids)
-    acquired: list[asyncio.Lock] = []
-    adjusted: list[VolumeSnapshot] = []
-    confirmed: set[str] = set()
+    adjustments = _adjustments(hass)
+    adjusted: dict[str, VolumeAdjustment] = {}
 
-    try:
-        for lock in locks:
-            await lock.acquire()
-            acquired.append(lock)
-
-        snapshots = []
+    async with _holding(_locks(hass, entity_ids)):
         for entity_id in entity_ids:
-            volume = _state_volume(hass, entity_id)
-            if volume is None:
+            if (pending := adjustments.get(entity_id)) is not None:
+                # The device is still at an earlier send's temporary volume.
+                original_volume = pending.original_volume
+            elif (original_volume := _state_volume(hass, entity_id)) is None:
                 _LOGGER.warning(
                     "Cannot adjust volume for %s: current volume is unavailable",
                     entity_id,
                 )
                 continue
-            snapshots.append(VolumeSnapshot(entity_id, volume))
-
-        for snapshot in snapshots:
             try:
-                await _set_volume(hass, snapshot.entity_id, temporary_volume)
+                await _set_volume(hass, entity_id, temporary_volume)
             except Exception:  # noqa: BLE001 - still notify other selected devices
-                _LOGGER.exception(
-                    "Failed to set temporary volume for %s", snapshot.entity_id
-                )
+                _LOGGER.exception("Failed to set temporary volume for %s", entity_id)
                 continue
-            adjusted.append(snapshot)
+            adjustment = VolumeAdjustment(original_volume, temporary_volume)
+            adjustments[entity_id] = adjustment
+            adjusted[entity_id] = adjustment
 
-        if adjusted:
-            await asyncio.sleep(VOLUME_SETTLE_SECONDS)
-            confirmed = {
-                snapshot.entity_id
-                for snapshot in adjusted
-                if _volume_matches(
-                    _state_volume(hass, snapshot.entity_id), temporary_volume
-                )
-            }
+        try:
+            if adjusted:
+                await asyncio.sleep(VOLUME_SETTLE_SECONDS)
+                for entity_id, adjustment in adjusted.items():
+                    adjustment.confirmed = _volume_matches(
+                        _state_volume(hass, entity_id), temporary_volume
+                    )
+            yield
+        except BaseException:
+            if adjusted:
+                await _shielded_restore(hass, adjusted)
+            raise
 
-        yield
-        if adjusted:
-            await asyncio.sleep(restore_after)
-    finally:
-        if adjusted:
-            await _shielded_restore(hass, adjusted, temporary_volume, confirmed)
-        for lock in reversed(acquired):
-            lock.release()
+    if adjusted:
+        hass.async_create_background_task(
+            _restore_after_delay(hass, adjusted, restore_after),
+            f"{DOMAIN} volume restore",
+        )

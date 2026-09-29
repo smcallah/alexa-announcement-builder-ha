@@ -62,8 +62,10 @@ Each selected notify entity decides whether that Alexa speaks or announces the
 message. Select any combination of `_speak` and `_announce` entities for a
 message-only sequence. Any sequence containing Sound requires every selected
 entity to be a `_speak` entity because the Alexa Devices Announce path plays its
-announcement chime but does not play embedded audio markup. Existing YAML with
-one `target` string remains supported.
+announcement chime but does not play embedded audio markup. The integration
+recognizes Announce entities from the Alexa Devices entity registry, so renamed
+entities are still identified correctly. Existing YAML with one `target` string
+remains supported.
 
 Home Assistant 2026.8 cannot render a multiple-entity selector when an action
 editor still holds the former single-string value. If an existing action shows
@@ -101,12 +103,15 @@ data:
       text: "Dinner is ready."
 ```
 
-The restore delay starts after Alexa Devices accepts the send request; Home
+The action finishes as soon as the message is sent, so automations continue
+without waiting for the restore; the restore runs in the background. The
+restore delay starts after Alexa Devices accepts the send request; Home
 Assistant does not report the exact moment playback finishes. Increase the
 delay for longer messages. If someone changes an Echo's volume while the
 message is playing, the integration leaves that new volume in place instead of
-overwriting it. Overlapping sends to the same device wait for the earlier send
-to finish its restore cycle.
+overwriting it. If another send reaches an Echo that is still waiting to be
+restored, the newer send takes over: the Echo keeps its original volume as the
+restore target and returns to it after the newer send's delay.
 
 ## Sequence builder
 

@@ -21,6 +21,10 @@ class ServiceCall:
         self.data = data
 
 
+class ServiceValidationError(Exception):
+    """Home Assistant service-validation error stand-in."""
+
+
 class ConfigEntry:
     """Typing stub for a config entry."""
 
@@ -70,6 +74,7 @@ def _entity_id(value: Any) -> str:
 homeassistant = ModuleType("homeassistant")
 config_entries = ModuleType("homeassistant.config_entries")
 core = ModuleType("homeassistant.core")
+exceptions = ModuleType("homeassistant.exceptions")
 helpers = ModuleType("homeassistant.helpers")
 config_validation = ModuleType("homeassistant.helpers.config_validation")
 entity_registry = ModuleType("homeassistant.helpers.entity_registry")
@@ -77,6 +82,7 @@ config_entries.ConfigEntry = ConfigEntry
 config_entries.ConfigFlow = ConfigFlow
 core.HomeAssistant = HomeAssistant
 core.ServiceCall = ServiceCall
+exceptions.ServiceValidationError = ServiceValidationError
 config_validation.string = _string
 config_validation.boolean = _boolean
 config_validation.entity_id = _entity_id
@@ -96,10 +102,12 @@ helpers.config_validation = config_validation
 helpers.entity_registry = entity_registry
 homeassistant.config_entries = config_entries
 homeassistant.core = core
+homeassistant.exceptions = exceptions
 homeassistant.helpers = helpers
 sys.modules.setdefault("homeassistant", homeassistant)
 sys.modules.setdefault("homeassistant.config_entries", config_entries)
 sys.modules.setdefault("homeassistant.core", core)
+sys.modules.setdefault("homeassistant.exceptions", exceptions)
 sys.modules.setdefault("homeassistant.helpers", helpers)
 sys.modules.setdefault("homeassistant.helpers.config_validation", config_validation)
 sys.modules.setdefault("homeassistant.helpers.entity_registry", entity_registry)

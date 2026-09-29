@@ -711,48 +711,6 @@ def test_schema_rejects_sound_with_message_options() -> None:
         )
 
 
-@pytest.mark.parametrize(
-    "target", ["notify.office_echo_announce", "notify.office_echo_announce_2"]
-)
-def test_schema_rejects_sound_sent_to_announce_target(target: str) -> None:
-    with pytest.raises(vol.Invalid, match="Speak target"):
-        SEND_SCHEMA(
-            {
-                "target": target,
-                "content": {
-                    "active_choice": "Sound",
-                    "Sound": "doorbell_chime",
-                },
-            }
-        )
-
-
-def test_schema_rejects_sequence_with_sound_sent_to_announce_target() -> None:
-    with pytest.raises(vol.Invalid, match="sequence containing Sound"):
-        SEND_SCHEMA(
-            {
-                "target": [
-                    "notify.office_echo_speak",
-                    "notify.kitchen_echo_announce",
-                ],
-                "sequence": [
-                    {
-                        "content": {
-                            "active_choice": "Message",
-                            "Message": {"text": "Listen."},
-                        }
-                    },
-                    {
-                        "content": {
-                            "active_choice": "Sound",
-                            "Sound": "doorbell_chime",
-                        }
-                    },
-                ],
-            }
-        )
-
-
 def test_schema_accepts_multiple_message_targets() -> None:
     data = SEND_SCHEMA(
         {
@@ -774,22 +732,6 @@ def test_schema_preserves_single_target_for_backward_compatibility() -> None:
     data = SEND_SCHEMA({"target": "notify.office_echo_speak", "text": "Hello."})
 
     assert data["target"] == "notify.office_echo_speak"
-
-
-def test_schema_rejects_sound_when_any_target_is_announce() -> None:
-    with pytest.raises(vol.Invalid, match="Speak target"):
-        SEND_SCHEMA(
-            {
-                "target": [
-                    "notify.office_echo_speak",
-                    "notify.kitchen_echo_announce",
-                ],
-                "content": {
-                    "active_choice": "Sound",
-                    "Sound": "doorbell_chime",
-                },
-            }
-        )
 
 
 @pytest.mark.parametrize("target", [[], ["notify.office_echo_speak", "light.office"]])

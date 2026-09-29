@@ -2,6 +2,7 @@
 
 DOMAIN = "alexa_announcement_builder"
 SERVICE_SEND = "send"
+ALEXA_DEVICES_DOMAIN = "alexa_devices"
 
 ATTR_TARGET = "target"
 ATTR_CONTENT = "content"
