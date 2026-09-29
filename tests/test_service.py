@@ -6,6 +6,7 @@ from unittest.mock import AsyncMock, Mock, call, patch
 
 import pytest
 import voluptuous as vol
+from homeassistant.exceptions import ServiceValidationError
 
 from custom_components.alexa_announcement_builder import (
     SEND_SCHEMA,
@@ -13,6 +14,8 @@ from custom_components.alexa_announcement_builder import (
     async_setup_entry,
     async_unload_entry,
 )
+
+_SLEEP = "custom_components.alexa_announcement_builder.volume.asyncio.sleep"
 
 
 class _States:
@@ -28,6 +31,46 @@ class _States:
         return SimpleNamespace(attributes={"volume_level": volume})
 
 
+def _hass(
+    *,
+    entries: dict[str, SimpleNamespace] | None = None,
+    entries_by_device: dict[str, list[SimpleNamespace]] | None = None,
+    states: _States | None = None,
+    async_call: AsyncMock | None = None,
+) -> SimpleNamespace:
+    """Build a Home Assistant stand-in with an entity registry."""
+    entries = entries or {}
+    background_tasks: list[asyncio.Task] = []
+
+    def create_background_task(target, name: str) -> asyncio.Task:
+        task = asyncio.create_task(target, name=name)
+        background_tasks.append(task)
+        return task
+
+    return SimpleNamespace(
+        data={},
+        entity_registry=SimpleNamespace(
+            async_get=Mock(side_effect=entries.get),
+            entries_by_device=entries_by_device or {},
+        ),
+        services=SimpleNamespace(
+            async_register=Mock(), async_call=async_call or AsyncMock()
+        ),
+        states=states or _States({}),
+        background_tasks=background_tasks,
+        async_create_background_task=create_background_task,
+    )
+
+
+def _notify_entry(translation_key: str, device_id: str | None = None):
+    """Build an Alexa Devices notify-entity registry entry."""
+    return SimpleNamespace(
+        device_id=device_id,
+        platform="alexa_devices",
+        translation_key=translation_key,
+    )
+
+
 def _volume_hass(
     volumes: dict[str, float],
 ) -> tuple[SimpleNamespace, Mock, AsyncMock]:
@@ -39,8 +82,7 @@ def _volume_hass(
     for media_player in volumes:
         suffix = media_player.removeprefix("media_player.")
         device_id = f"device-{suffix}"
-        notify = f"notify.{suffix}_announce"
-        entries[notify] = SimpleNamespace(device_id=device_id)
+        entries[f"notify.{suffix}_announce"] = _notify_entry("announce", device_id)
         entries_by_device[device_id] = [
             SimpleNamespace(
                 entity_id=media_player,
@@ -48,11 +90,6 @@ def _volume_hass(
                 platform="alexa_devices",
             )
         ]
-
-    registry = SimpleNamespace(
-        async_get=Mock(side_effect=entries.get),
-        entries_by_device=entries_by_device,
-    )
 
     async def async_call(
         domain: str,
@@ -66,14 +103,28 @@ def _volume_hass(
             states.volumes[target["entity_id"]] = service_data["volume_level"]
 
     service_call = AsyncMock(side_effect=async_call)
-    register = Mock()
-    hass = SimpleNamespace(
-        data={},
-        entity_registry=registry,
-        services=SimpleNamespace(async_register=register, async_call=service_call),
+    hass = _hass(
+        entries=entries,
+        entries_by_device=entries_by_device,
         states=states,
+        async_call=service_call,
     )
-    return hass, register, service_call
+    return hass, hass.services.async_register, service_call
+
+
+async def _handler(hass: SimpleNamespace):
+    """Register the service and return its handler."""
+    assert await async_setup(hass, {}) is True
+    return hass.services.async_register.call_args.args[2]
+
+
+def _volume_calls(service_call: AsyncMock) -> list[float]:
+    """Return the volume levels set, in call order."""
+    return [
+        args.args[2]["volume_level"]
+        for args in service_call.await_args_list
+        if args.args[:2] == ("media_player", "volume_set")
+    ]
 
 
 async def test_config_entry_setup_and_unload() -> None:
@@ -86,13 +137,12 @@ async def test_config_entry_setup_and_unload() -> None:
 
 
 async def test_service_forwards_to_notify_send_message() -> None:
-    services = SimpleNamespace(async_register=Mock(), async_call=AsyncMock())
-    hass = SimpleNamespace(services=services)
-
-    assert await async_setup(hass, {}) is True
+    hass = _hass()
+    handler = await _handler(hass)
+    services = hass.services
 
     services.async_register.assert_called_once()
-    domain, service, handler = services.async_register.call_args.args
+    domain, service, _ = services.async_register.call_args.args
     assert (domain, service) == ("alexa_announcement_builder", "send")
     assert services.async_register.call_args.kwargs["schema"] is SEND_SCHEMA
 
@@ -127,10 +177,8 @@ async def test_service_forwards_to_notify_send_message() -> None:
 
 
 async def test_service_forwards_selected_sound_to_notify() -> None:
-    services = SimpleNamespace(async_register=Mock(), async_call=AsyncMock())
-    hass = SimpleNamespace(services=services)
-    await async_setup(hass, {})
-    handler = services.async_register.call_args.args[2]
+    hass = _hass()
+    handler = await _handler(hass)
 
     data = SEND_SCHEMA(
         {
@@ -143,7 +191,7 @@ async def test_service_forwards_selected_sound_to_notify() -> None:
     )
     await handler(SimpleNamespace(data=data))
 
-    services.async_call.assert_awaited_once_with(
+    hass.services.async_call.assert_awaited_once_with(
         "notify",
         "send_message",
         {
@@ -156,10 +204,8 @@ async def test_service_forwards_selected_sound_to_notify() -> None:
 
 
 async def test_service_forwards_ordered_sequence_to_notify() -> None:
-    services = SimpleNamespace(async_register=Mock(), async_call=AsyncMock())
-    hass = SimpleNamespace(services=services)
-    await async_setup(hass, {})
-    handler = services.async_register.call_args.args[2]
+    hass = _hass()
+    handler = await _handler(hass)
 
     data = SEND_SCHEMA(
         {
@@ -194,7 +240,7 @@ async def test_service_forwards_ordered_sequence_to_notify() -> None:
     )
     await handler(SimpleNamespace(data=data))
 
-    services.async_call.assert_awaited_once_with(
+    hass.services.async_call.assert_awaited_once_with(
         "notify",
         "send_message",
         {
@@ -213,32 +259,86 @@ async def test_service_forwards_ordered_sequence_to_notify() -> None:
 
 
 async def test_forwarding_error_propagates() -> None:
-    services = SimpleNamespace(
-        async_register=Mock(), async_call=AsyncMock(side_effect=RuntimeError("failed"))
-    )
-    hass = SimpleNamespace(services=services)
-    await async_setup(hass, {})
-    handler = services.async_register.call_args.args[2]
+    hass = _hass(async_call=AsyncMock(side_effect=RuntimeError("failed")))
+    handler = await _handler(hass)
 
     data = SEND_SCHEMA({"target": "notify.office_echo_speak", "text": "Hello."})
 
-    try:
+    with pytest.raises(RuntimeError, match="failed"):
         await handler(SimpleNamespace(data=data))
-    except RuntimeError as err:
-        assert str(err) == "failed"
-    else:
-        raise AssertionError("notify error did not propagate")
+
+
+_SOUND_CONTENT = {"content": {"active_choice": "Sound", "Sound": "doorbell_chime"}}
+_SOUND_SEQUENCE = {
+    "sequence": [
+        {"content": {"active_choice": "Message", "Message": {"text": "Listen."}}},
+        _SOUND_CONTENT,
+    ]
+}
+
+
+@pytest.mark.parametrize(
+    ("target", "content"),
+    [
+        ("notify.office_echo_announce", _SOUND_CONTENT),
+        ("notify.office_echo_announce_2", _SOUND_CONTENT),
+        (["notify.office_echo_speak", "notify.office_echo_announce"], _SOUND_CONTENT),
+        (["notify.office_echo_speak", "notify.office_echo_announce"], _SOUND_SEQUENCE),
+    ],
+)
+async def test_sound_rejected_for_unregistered_announce_entity_ids(
+    target: str | list[str], content: dict
+) -> None:
+    """Entities outside Alexa Devices fall back to the entity ID pattern."""
+    hass = _hass()
+    handler = await _handler(hass)
+    data = SEND_SCHEMA({"target": target, **content})
+
+    with pytest.raises(ServiceValidationError, match="notify.office_echo_announce"):
+        await handler(SimpleNamespace(data=data))
+
+    hass.services.async_call.assert_not_awaited()
+
+
+async def test_sound_rejected_for_renamed_alexa_announce_entity() -> None:
+    hass = _hass(entries={"notify.hallway": _notify_entry("announce")})
+    handler = await _handler(hass)
+    data = SEND_SCHEMA({"target": "notify.hallway", **_SOUND_SEQUENCE})
+
+    with pytest.raises(ServiceValidationError, match="Speak targets"):
+        await handler(SimpleNamespace(data=data))
+
+    hass.services.async_call.assert_not_awaited()
+
+
+async def test_sound_allowed_for_speak_entity_with_announce_like_id() -> None:
+    hass = _hass(entries={"notify.office_announce": _notify_entry("speak")})
+    handler = await _handler(hass)
+    data = SEND_SCHEMA({"target": "notify.office_announce", **_SOUND_CONTENT})
+
+    await handler(SimpleNamespace(data=data))
+
+    hass.services.async_call.assert_awaited_once()
+
+
+async def test_message_allowed_for_announce_entity() -> None:
+    hass = _hass(entries={"notify.hallway": _notify_entry("announce")})
+    handler = await _handler(hass)
+    data = SEND_SCHEMA({"target": "notify.hallway", "text": "Hello."})
+
+    await handler(SimpleNamespace(data=data))
+
+    hass.services.async_call.assert_awaited_once()
 
 
 async def test_temporary_volume_restores_each_device_to_its_original_level() -> None:
-    hass, register, service_call = _volume_hass(
+    hass, _, service_call = _volume_hass(
         {
             "media_player.kitchen_echo": 0.25,
             "media_player.office_echo": 0.45,
         }
     )
-    await async_setup(hass, {})
-    handler = register.call_args.args[2]
+    handler = await _handler(hass)
     data = SEND_SCHEMA(
         {
             "target": [
@@ -250,11 +350,9 @@ async def test_temporary_volume_restores_each_device_to_its_original_level() -> 
         }
     )
 
-    with patch(
-        "custom_components.alexa_announcement_builder.volume.asyncio.sleep",
-        new=AsyncMock(),
-    ) as sleep:
+    with patch(_SLEEP, new=AsyncMock()) as sleep:
         await handler(SimpleNamespace(data=data))
+        await asyncio.gather(*hass.background_tasks)
 
     assert service_call.await_args_list == [
         call(
@@ -305,8 +403,41 @@ async def test_temporary_volume_restores_each_device_to_its_original_level() -> 
     }
 
 
+async def test_temporary_volume_returns_before_restore_delay() -> None:
+    hass, _, service_call = _volume_hass({"media_player.office_echo": 0.3})
+    handler = await _handler(hass)
+    data = SEND_SCHEMA(
+        {
+            "target": "notify.office_echo_announce",
+            "text": "Test.",
+            "adjust_volume": True,
+        }
+    )
+    release_restore = asyncio.Event()
+
+    async def controlled_sleep(delay: int) -> None:
+        if delay == 10:
+            await release_restore.wait()
+
+    with patch(_SLEEP, side_effect=controlled_sleep):
+        await handler(SimpleNamespace(data=data))
+
+        assert service_call.await_args_list[-1].args[:2] == (
+            "notify",
+            "send_message",
+        )
+        assert hass.states.volumes["media_player.office_echo"] == 0.7
+        (restore,) = hass.background_tasks
+        assert not restore.done()
+
+        release_restore.set()
+        await restore
+
+    assert hass.states.volumes["media_player.office_echo"] == 0.3
+
+
 async def test_temporary_volume_restores_immediately_when_notify_fails() -> None:
-    hass, register, service_call = _volume_hass({"media_player.office_echo": 0.3})
+    hass, _, service_call = _volume_hass({"media_player.office_echo": 0.3})
 
     original_side_effect = service_call.side_effect
 
@@ -316,8 +447,7 @@ async def test_temporary_volume_restores_immediately_when_notify_fails() -> None
         await original_side_effect(*args, **kwargs)
 
     service_call.side_effect = fail_notify
-    await async_setup(hass, {})
-    handler = register.call_args.args[2]
+    handler = await _handler(hass)
     data = SEND_SCHEMA(
         {
             "target": "notify.office_echo_announce",
@@ -329,15 +459,13 @@ async def test_temporary_volume_restores_immediately_when_notify_fails() -> None
     )
 
     with (
-        patch(
-            "custom_components.alexa_announcement_builder.volume.asyncio.sleep",
-            new=AsyncMock(),
-        ) as sleep,
+        patch(_SLEEP, new=AsyncMock()) as sleep,
         pytest.raises(RuntimeError, match="send failed"),
     ):
         await handler(SimpleNamespace(data=data))
 
     assert sleep.await_args_list == [call(1)]
+    assert hass.background_tasks == []
     assert hass.states.volumes["media_player.office_echo"] == 0.3
     assert service_call.await_args_list[-1] == call(
         "media_player",
@@ -349,7 +477,7 @@ async def test_temporary_volume_restores_immediately_when_notify_fails() -> None
 
 
 async def test_manual_volume_change_is_not_overwritten_by_restore() -> None:
-    hass, register, service_call = _volume_hass({"media_player.office_echo": 0.3})
+    hass, _, service_call = _volume_hass({"media_player.office_echo": 0.3})
     original_side_effect = service_call.side_effect
 
     async def change_volume_during_notify(*args, **kwargs) -> None:
@@ -358,8 +486,7 @@ async def test_manual_volume_change_is_not_overwritten_by_restore() -> None:
             hass.states.volumes["media_player.office_echo"] = 0.55
 
     service_call.side_effect = change_volume_during_notify
-    await async_setup(hass, {})
-    handler = register.call_args.args[2]
+    handler = await _handler(hass)
     data = SEND_SCHEMA(
         {
             "target": "notify.office_echo_announce",
@@ -368,20 +495,56 @@ async def test_manual_volume_change_is_not_overwritten_by_restore() -> None:
         }
     )
 
-    with patch(
-        "custom_components.alexa_announcement_builder.volume.asyncio.sleep",
-        new=AsyncMock(),
-    ):
+    with patch(_SLEEP, new=AsyncMock()):
         await handler(SimpleNamespace(data=data))
+        await asyncio.gather(*hass.background_tasks)
 
     assert hass.states.volumes["media_player.office_echo"] == 0.55
     assert service_call.await_count == 2
 
 
-async def test_overlapping_sends_capture_volume_after_device_lock() -> None:
-    hass, register, service_call = _volume_hass({"media_player.office_echo": 0.3})
-    await async_setup(hass, {})
-    handler = register.call_args.args[2]
+async def test_overlapping_send_keeps_original_volume_and_takes_over_restore() -> None:
+    hass, _, service_call = _volume_hass({"media_player.office_echo": 0.3})
+    handler = await _handler(hass)
+    first = SEND_SCHEMA(
+        {
+            "target": "notify.office_echo_announce",
+            "text": "First.",
+            "adjust_volume": True,
+        }
+    )
+    second = SEND_SCHEMA(
+        {
+            "target": "notify.office_echo_announce",
+            "text": "Second.",
+            "adjust_volume": True,
+            "announcement_volume": 90,
+        }
+    )
+    release_restores = asyncio.Event()
+
+    async def controlled_sleep(delay: int) -> None:
+        if delay == 10:
+            await release_restores.wait()
+
+    with patch(_SLEEP, side_effect=controlled_sleep):
+        await handler(SimpleNamespace(data=first))
+        # The second send does not wait for the first send's restore delay.
+        await asyncio.wait_for(handler(SimpleNamespace(data=second)), timeout=1)
+
+        assert hass.states.volumes["media_player.office_echo"] == 0.9
+        release_restores.set()
+        await asyncio.gather(*hass.background_tasks)
+
+    # Only the second send restores, and it restores the pre-first-send volume.
+    assert _volume_calls(service_call) == [0.7, 0.9, 0.3]
+    assert hass.states.volumes["media_player.office_echo"] == 0.3
+
+
+async def test_cancelled_restore_delay_still_restores_volume() -> None:
+    """Home Assistant cancels background tasks when it shuts down."""
+    hass, _, _ = _volume_hass({"media_player.office_echo": 0.3})
+    handler = await _handler(hass)
     data = SEND_SCHEMA(
         {
             "target": "notify.office_echo_announce",
@@ -389,40 +552,23 @@ async def test_overlapping_sends_capture_volume_after_device_lock() -> None:
             "adjust_volume": True,
         }
     )
-    first_restore_waiting = asyncio.Event()
-    release_first_restore = asyncio.Event()
-    restore_delays = 0
+
+    restore_waiting = asyncio.Event()
 
     async def controlled_sleep(delay: int) -> None:
-        nonlocal restore_delays
         if delay == 10:
-            restore_delays += 1
-            if restore_delays == 1:
-                first_restore_waiting.set()
-                await release_first_restore.wait()
+            restore_waiting.set()
+            await asyncio.Event().wait()
 
-    with patch(
-        "custom_components.alexa_announcement_builder.volume.asyncio.sleep",
-        side_effect=controlled_sleep,
-    ):
-        first = asyncio.create_task(handler(SimpleNamespace(data=data)))
-        await first_restore_waiting.wait()
-
-        second = asyncio.create_task(handler(SimpleNamespace(data=data)))
-        with pytest.raises(TimeoutError):
-            await asyncio.wait_for(asyncio.shield(second), timeout=0.01)
-
-        assert service_call.await_count == 2
-        release_first_restore.set()
-        await first
-        await second
+    with patch(_SLEEP, side_effect=controlled_sleep):
+        await handler(SimpleNamespace(data=data))
+        (restore,) = hass.background_tasks
+        await restore_waiting.wait()
+        restore.cancel()
+        with pytest.raises(asyncio.CancelledError):
+            await restore
 
     assert hass.states.volumes["media_player.office_echo"] == 0.3
-    assert [
-        args.args[2]["volume_level"]
-        for args in service_call.await_args_list
-        if args.args[:2] == ("media_player", "volume_set")
-    ] == [0.7, 0.3, 0.7, 0.3]
 
 
 @pytest.mark.parametrize(
