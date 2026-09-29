@@ -57,6 +57,7 @@ from .ssml import build_ssml
 from .volume import temporary_device_volume
 
 _LOGGER = logging.getLogger(__name__)
+CONFIG_SCHEMA = cv.config_entry_only_config_schema(DOMAIN)
 _ANNOUNCE_ENTITY_ID = re.compile(r"_announce(?:_\d+)?$")
 _AUDIO_TAG = re.compile(r"<audio(?=\s|/?>)", re.IGNORECASE)
 

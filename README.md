@@ -1,5 +1,7 @@
 # Alexa Announcement Builder
 
+[![CI](https://github.com/smcallah/alexa-announcement-builder-ha/actions/workflows/ci.yml/badge.svg)](https://github.com/smcallah/alexa-announcement-builder-ha/actions/workflows/ci.yml)
+
 Alexa Announcement Builder is a service-only Home Assistant custom integration
 that combines ordered messages, sounds, and optional raw markup into
 Alexa-compatible SSML. Each message can use its own voice and speech options.
@@ -311,3 +313,10 @@ python -m ruff format --check .
 python -m ruff check .
 python -m pytest
 ```
+
+GitHub Actions runs these checks on Python 3.13 and 3.14, plus Home Assistant's
+hassfest and HACS validation, for every pull request and push to `main`.
+
+## License
+
+Released under the [MIT License](LICENSE).
