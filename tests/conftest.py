@@ -71,6 +71,10 @@ def _entity_id(value: Any) -> str:
     return value
 
 
+def _config_entry_only_config_schema(domain: str) -> vol.Schema:
+    return vol.Schema({vol.Optional(domain): dict}, extra=vol.ALLOW_EXTRA)
+
+
 homeassistant = ModuleType("homeassistant")
 config_entries = ModuleType("homeassistant.config_entries")
 core = ModuleType("homeassistant.core")
@@ -86,6 +90,7 @@ exceptions.ServiceValidationError = ServiceValidationError
 config_validation.string = _string
 config_validation.boolean = _boolean
 config_validation.entity_id = _entity_id
+config_validation.config_entry_only_config_schema = _config_entry_only_config_schema
 
 
 def _registry_async_get(hass: Any) -> Any:
