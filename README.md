@@ -314,8 +314,20 @@ python -m ruff check .
 python -m pytest
 ```
 
-GitHub Actions runs these checks on Python 3.13 and 3.14, plus Home Assistant's
-hassfest and HACS validation, for every pull request and push to `main`.
+These unit tests replace Home Assistant with small stand-ins, so they run
+quickly on any platform. A second suite in `tests_ha` runs the integration
+inside a real Home Assistant instance. It needs the Python version the pinned
+Home Assistant release requires (currently 3.14) and a separate environment,
+because the stand-ins and real Home Assistant cannot share a test session:
+
+```bash
+python -m pip install -r requirements-test-ha.txt
+python -m pytest tests_ha
+```
+
+GitHub Actions runs the unit tests on Python 3.13 and 3.14, the Home Assistant
+suite, and Home Assistant's hassfest and HACS validation, for every pull request
+and push to `main`.
 
 ## License
 

@@ -76,8 +76,6 @@ def build_ssml(data: Mapping[str, Any]) -> str:
     if ATTR_SEQUENCE in data:
         body = "".join(_build_content(item) for item in data[ATTR_SEQUENCE])
     else:
-        if raw_ssml := data.get(ATTR_RAW_SSML):
-            return str(raw_ssml)
         body = _build_content(data)
 
     parts = []

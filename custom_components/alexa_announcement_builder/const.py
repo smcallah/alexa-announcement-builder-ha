@@ -30,6 +30,8 @@ DEFAULT_EMOTION_INTENSITY = "medium"
 DEFAULT_ANNOUNCEMENT_VOLUME = 70
 DEFAULT_RESTORE_AFTER = 10
 MAX_AUDIO_CLIPS_PER_MESSAGE = 5
+# Alexa's SSML break tag accepts at most 10 seconds.
+MAX_BREAK_MS = 10000
 
 COMMON_SOUNDS = {
     "doorbell_chime": "soundbank://soundlibrary/home/amzn_sfx_doorbell_chime_01",
