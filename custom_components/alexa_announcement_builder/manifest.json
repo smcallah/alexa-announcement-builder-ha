@@ -1,12 +1,13 @@
 {
   "domain": "alexa_announcement_builder",
   "name": "Alexa Announcement Builder",
+  "after_dependencies": ["alexa_devices"],
   "codeowners": [],
   "config_flow": true,
   "dependencies": ["notify"],
   "documentation": "https://github.com/smcallah/alexa-announcement-builder-ha",
   "integration_type": "service",
-  "iot_class": "local_push",
+  "iot_class": "calculated",
   "issue_tracker": "https://github.com/smcallah/alexa-announcement-builder-ha/issues",
-  "version": "0.3.1"
+  "version": "0.3.2"
 }

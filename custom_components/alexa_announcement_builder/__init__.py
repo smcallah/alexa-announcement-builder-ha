@@ -45,6 +45,7 @@ from .const import (
     EMOTION_INTENSITIES,
     EMOTIONS,
     MAX_AUDIO_CLIPS_PER_MESSAGE,
+    MAX_BREAK_MS,
     PITCHES,
     RATES,
     SERVICE_SEND,
@@ -429,6 +430,11 @@ def _normalize_and_validate_content(data: dict[str, Any]) -> dict[str, Any]:
         content = data.pop(ATTR_CONTENT)
         data.update(content)
 
+    for field in (ATTR_TEXT, ATTR_RAW_SSML):
+        # A blank field counts as absent rather than as content.
+        if field in data and not data[field].strip():
+            del data[field]
+
     selected = [
         field for field in (ATTR_TEXT, ATTR_SOUND, ATTR_RAW_SSML) if data.get(field)
     ]
@@ -465,10 +471,10 @@ SEND_SCHEMA = vol.All(
             vol.Optional(ATTR_EMOTION_INTENSITY): vol.In(EMOTION_INTENSITIES),
             vol.Optional(ATTR_SPEECH_DOMAIN): vol.In(SPEECH_DOMAINS),
             vol.Optional(ATTR_BREAK_BEFORE_MS): vol.All(
-                vol.Coerce(int), vol.Range(min=0)
+                vol.Coerce(int), vol.Range(min=0, max=MAX_BREAK_MS)
             ),
             vol.Optional(ATTR_BREAK_AFTER_MS): vol.All(
-                vol.Coerce(int), vol.Range(min=0)
+                vol.Coerce(int), vol.Range(min=0, max=MAX_BREAK_MS)
             ),
             vol.Optional(ATTR_RAW_SSML): cv.string,
             vol.Optional(ATTR_ADJUST_VOLUME): cv.boolean,

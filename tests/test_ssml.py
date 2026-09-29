@@ -88,6 +88,65 @@ def test_raw_ssml_passthrough() -> None:
     assert build_ssml({"raw_ssml": raw}) == raw
 
 
+def test_single_raw_ssml_keeps_breaks() -> None:
+    data = SEND_SCHEMA(
+        {
+            "target": "notify.office_echo_speak",
+            "raw_ssml": "<p>Hello.</p>",
+            "break_before_ms": 250,
+            "break_after_ms": 500,
+        }
+    )
+
+    assert build_ssml(data) == (
+        '<break time="250ms"/><p>Hello.</p><break time="500ms"/>'
+    )
+
+
+@pytest.mark.parametrize("field", ["break_before_ms", "break_after_ms"])
+def test_schema_limits_breaks_to_ten_seconds(field: str) -> None:
+    data = SEND_SCHEMA(
+        {"target": "notify.office_echo_speak", "text": "Hello.", field: 10000}
+    )
+    assert data[field] == 10000
+
+    with pytest.raises(vol.Invalid):
+        SEND_SCHEMA(
+            {"target": "notify.office_echo_speak", "text": "Hello.", field: 10001}
+        )
+
+
+@pytest.mark.parametrize("field", ["text", "raw_ssml"])
+@pytest.mark.parametrize("blank", ["", "   ", "\n\t"])
+def test_schema_rejects_blank_single_content(field: str, blank: str) -> None:
+    with pytest.raises(vol.Invalid, match="select exactly one"):
+        SEND_SCHEMA({"target": "notify.office_echo_speak", field: blank})
+
+
+def test_schema_ignores_blank_text_beside_sound() -> None:
+    data = SEND_SCHEMA(
+        {
+            "target": "notify.office_echo_speak",
+            "text": "   ",
+            "sound": {"active_choice": "Common sound", "Common sound": "applause"},
+        }
+    )
+
+    assert "text" not in data
+    assert build_ssml(data) == (
+        '<audio src="soundbank://soundlibrary/human/amzn_sfx_crowd_applause_01"/>'
+    )
+
+
+def test_schema_ignores_blank_raw_ssml_beside_text() -> None:
+    data = SEND_SCHEMA(
+        {"target": "notify.office_echo_speak", "text": "Hello.", "raw_ssml": "  "}
+    )
+
+    assert "raw_ssml" not in data
+    assert build_ssml(data) == "Hello."
+
+
 def test_common_sound() -> None:
     data = SEND_SCHEMA(
         {
